@@ -14,6 +14,7 @@ def get_embedder():
 SIMILARITY_REJECT_THRESHOLD = 0.5
 SIMILARITY_WARN_THRESHOLD = 0.75
 TOP_K = 5
+MAX_TOKENS = 1024
 
 SYSTEM_PROMPT = """你是一位專業的台灣勞基法助理，服務對象為企業 HR。
 請只根據以下提供的法條內容回答問題，不得自行推論或引用條文以外的資訊。
@@ -47,15 +48,18 @@ def _call_claude(question: str, articles: list) -> str:
         f"【第{row.article_number}條】\n{row.content}" for row in articles
     )
     client = Anthropic(api_key=settings.anthropic_api_key)
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=[
-            {"role": "user", "content": f"相關法條：\n{context}\n\n問題：{question}"}
-        ],
-    )
-    return response.content[0].text
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=MAX_TOKENS,
+            system=SYSTEM_PROMPT,
+            messages=[
+                {"role": "user", "content": f"相關法條：\n{context}\n\n問題：{question}"}
+            ],
+        )
+        return response.content[0].text
+    except Exception as e:
+        raise RuntimeError(f"Claude API call failed: {e}") from e
 
 
 async def query_law(question: str, db: AsyncSession) -> QueryResult:
