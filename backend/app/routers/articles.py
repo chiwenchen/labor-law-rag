@@ -38,3 +38,12 @@ async def law_status(db: AsyncSession = Depends(get_db)):
         "status": log.status if log else "never_run",
         "total_active_articles": total,
     }
+
+
+@router.post("/law/trigger-update")
+async def trigger_update():
+    """Manually trigger a law update — use this once to seed initial data."""
+    import asyncio
+    from app.services.scheduler import run_law_update
+    asyncio.create_task(run_law_update())
+    return {"message": "法條更新已觸發，請稍後查詢 /api/law/status 確認進度"}

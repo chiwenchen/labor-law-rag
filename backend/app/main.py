@@ -8,7 +8,11 @@ from app.routers import query, sessions, articles
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    yield  # scheduler starts here in Task 8
+    from app.services.scheduler import start_scheduler
+    start_scheduler()
+    yield
+    from app.services.scheduler import scheduler
+    scheduler.shutdown()
 
 
 app = FastAPI(title="勞基法 RAG API", lifespan=lifespan)
