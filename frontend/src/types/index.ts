@@ -1,6 +1,8 @@
 export interface CitedArticle {
   article_number: string;
   title: string | null;
+  law_id: string;
+  law_name: string;
   similarity: number;
 }
 
@@ -47,4 +49,12 @@ export interface QueryHistoryItem {
   cited_articles: CitedArticle[];
   max_similarity_score: number;
   created_at: string;
+}
+
+export interface SupportedLaw {
+  law_id: string;
+  law_name: string;
+  article_count: number;
+  last_updated: string | null;
+  last_status: "success" | "failed" | "never_run";
 }
