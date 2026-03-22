@@ -24,7 +24,10 @@ async def handle_query(request: QueryRequest, db: AsyncSession = Depends(get_db)
 
     # Get or create session
     if request.session_id:
-        session_id = uuid.UUID(request.session_id)
+        try:
+            session_id = uuid.UUID(request.session_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid session_id format")
     else:
         title = request.question[:20]
         session = Session(title=title)
