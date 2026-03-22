@@ -49,8 +49,8 @@ async def run_law_update(law_id: str | None = None):
                     )).scalar_one_or_none()
                     if sl:
                         sl.last_status = "failed"
-                except Exception:
-                    pass
+                except Exception as inner_err:
+                    logger.warning(f"[{law_info.law_id}] Could not mark as failed in supported_laws: {inner_err}")
                 logger.error(f"[{law_info.law_id}] failed: {e}")
             finally:
                 try:

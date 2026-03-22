@@ -3,6 +3,7 @@ import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.db.models import Session, QueryHistory
@@ -36,6 +37,12 @@ async def handle_query(request: QueryRequest, db: AsyncSession = Depends(get_db)
             session_id = uuid.UUID(request.session_id)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid session_id format")
+        # Validate session exists
+        existing_session = (await db.execute(
+            select(Session).where(Session.id == session_id)
+        )).scalar_one_or_none()
+        if existing_session is None:
+            raise HTTPException(status_code=404, detail="Session not found")
     else:
         title = request.question[:20]
         session = Session(title=title)
@@ -55,7 +62,7 @@ async def handle_query(request: QueryRequest, db: AsyncSession = Depends(get_db)
         answer=result.answer,
         cited_articles=result.cited_articles,
         max_similarity_score=(
-            result.cited_articles[0]["similarity"] if result.cited_articles else None
+            result.cited_articles[0].get("similarity") if result.cited_articles else None
         ),
     )
     db.add(history)
