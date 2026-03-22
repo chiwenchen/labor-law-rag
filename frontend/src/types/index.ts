@@ -39,3 +39,12 @@ export interface LawStatus {
   status: string;
   total_active_articles: number;
 }
+
+export interface QueryHistoryItem {
+  id: string;
+  question: string;
+  answer: string;
+  cited_articles: CitedArticle[];
+  max_similarity_score: number;
+  created_at: string;
+}
