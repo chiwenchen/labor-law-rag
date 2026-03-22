@@ -32,10 +32,10 @@
 | 服務 | 用途 |
 |------|------|
 | Claude API（claude-sonnet-4-6） | 生成自然語言回覆 |
-| OpenAI Embeddings API（text-embedding-ada-002） | 文字向量化（1536 維） |
+| BAAI/bge-m3（本地，via sentence-transformers） | 文字向量化（1024 維，完全本機運行） |
 | 全國法規資料庫 API（laws.moj.gov.tw） | 抓取最新勞基法條文 |
 
-> **Embedding 模型選擇說明：** LlamaIndex 的 pgvector 整合對 OpenAI embedding 支援最完整，且 text-embedding-ada-002 輸出恰為 1536 維，成本低廉（每次查詢不到 $0.0001）。Claude API 不提供 embedding 端點，故兩者分工：OpenAI 負責向量化，Claude 負責生成回覆。
+> **Embedding 模型選擇說明：** 使用 BAAI/bge-m3 本地模型（透過 sentence-transformers），完全本機運行，無需外部 API、無費用、無資料外送隱私疑慮。bge-m3 對繁體中文法律文本支援良好。模型首次啟動時自動下載（約 2GB），之後離線可用。LlamaIndex 透過 `HuggingFaceEmbedding` 整合，輸出維度 1024。Claude API 仍負責生成回覆。
 
 ---
 
@@ -74,7 +74,7 @@ APScheduler 每週觸發
 長度 > 500 字 → 拒絕，回傳 400
     │
     ▼
-問題向量化（OpenAI text-embedding-ada-002）
+問題向量化（BAAI/bge-m3，本機運行）
     │
     ▼
 pgvector 搜尋最相似的 5 條 is_active=true 法條
@@ -126,7 +126,7 @@ pgvector 搜尋最相似的 5 條 is_active=true 法條
 | `article_number` | varchar **UNIQUE** | 條號，例如 "38" |
 | `title` | varchar | 條文標題 |
 | `content` | text | 條文內文 |
-| `embedding` | vector(1536) | OpenAI text-embedding-ada-002 輸出 |
+| `embedding` | vector(1024) | BAAI/bge-m3 輸出 |
 | `is_active` | boolean | false = 已廢止 |
 | `last_updated` | timestamp | 條文最後修正日期 |
 | `version` | varchar | 法規版本號 |
@@ -266,7 +266,7 @@ pgvector 搜尋最相似的 5 條 is_active=true 法條
 | 後端 | Python FastAPI |
 | RAG 框架 | LlamaIndex |
 | 向量資料庫 | PostgreSQL + pgvector |
-| Embedding | OpenAI text-embedding-ada-002（1536 維） |
+| Embedding | BAAI/bge-m3（本地，sentence-transformers，1024 維） |
 | 排程 | APScheduler（內建於後端） |
 | LLM | Claude API（claude-sonnet-4-6） |
 | 法條來源 | 全國法規資料庫 API |
