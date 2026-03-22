@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import query, sessions, articles
+from app.routers import query, sessions, articles, laws
 
 
 @asynccontextmanager
@@ -33,3 +33,4 @@ app.add_middleware(
 app.include_router(query.router, prefix="/api")
 app.include_router(sessions.router, prefix="/api")
 app.include_router(articles.router, prefix="/api")
+app.include_router(laws.router, prefix="/api")

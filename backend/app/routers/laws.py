@@ -1,0 +1,87 @@
+from __future__ import annotations
+import logging
+import httpx
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.db.database import get_db
+from app.db.models import LawUpdateLog, SupportedLaw
+from app.services.law_registry import LAW_REGISTRY, get_law_by_id
+
+router = APIRouter()
+logger = logging.getLogger(__name__)
+
+# Ordered list of law_ids from registry (for consistent response ordering)
+_REGISTRY_ORDER = {law.law_id: i for i, law in enumerate(LAW_REGISTRY)}
+
+
+@router.get("/laws")
+async def list_laws(db: AsyncSession = Depends(get_db)):
+    """Return all supported laws with their current status."""
+    stmt = select(SupportedLaw)
+    laws = (await db.execute(stmt)).scalars().all()
+    sorted_laws = sorted(laws, key=lambda l: _REGISTRY_ORDER.get(l.law_id, 999))
+    return [
+        {
+            "law_id": l.law_id,
+            "law_name": l.law_name,
+            "article_count": l.article_count,
+            "last_updated": l.last_updated,
+            "last_status": l.last_status,
+        }
+        for l in sorted_laws
+    ]
+
+
+@router.post("/laws/{law_id}/update")
+async def update_law(law_id: str, db: AsyncSession = Depends(get_db)):
+    """Fetch and re-embed articles for one law.
+
+    Synchronous long-poll: takes 30–120 seconds depending on article count.
+    Frontend should use a 180-second timeout for this request.
+    """
+    law_info = get_law_by_id(law_id)
+    if law_info is None:
+        raise HTTPException(status_code=404, detail="Law not found in registry")
+
+    from app.services.fetcher import fetch_law
+    from app.services.indexer import upsert_articles
+
+    # Fetch articles
+    try:
+        articles = await fetch_law(law_info.law_id, law_info.law_name)
+    except httpx.HTTPStatusError as e:
+        # Mark as failed in supported_laws
+        supported_law = (await db.execute(
+            select(SupportedLaw).where(SupportedLaw.law_id == law_id)
+        )).scalar_one_or_none()
+        if supported_law:
+            supported_law.last_status = "failed"
+            await db.commit()
+        logger.error(f"[{law_id}] Fetch failed: {e}")
+        raise HTTPException(status_code=502, detail=f"法規來源無法取得：{e}")
+
+    # Index articles (also updates supported_laws)
+    index_result = await upsert_articles(articles, db, law_info.law_id, law_info.law_name)
+
+    # Write audit log
+    log = LawUpdateLog(
+        law_id=law_id,
+        articles_changed=index_result.inserted + index_result.updated,
+        status="success",
+    )
+    db.add(log)
+    await db.commit()
+
+    # Return current article count from supported_laws
+    supported_law = (await db.execute(
+        select(SupportedLaw).where(SupportedLaw.law_id == law_id)
+    )).scalar_one_or_none()
+    article_count = supported_law.article_count if supported_law else len(articles)
+
+    logger.info(f"[{law_id}] Manual update complete: count={article_count}")
+    return {
+        "status": "success",
+        "article_count": article_count,
+        "message": f"已更新 {law_info.law_name}（+{index_result.inserted} 新增 / ~{index_result.updated} 更新）",
+    }
