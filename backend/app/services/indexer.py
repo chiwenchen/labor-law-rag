@@ -101,7 +101,7 @@ async def upsert_articles(
         supported_law.last_updated = func.now()
         supported_law.last_status = "success"
 
-    await db.commit()
+    await db.flush()
     logger.info(
         f"[{law_id}] +{result.inserted} ~{result.updated} skip={result.skipped} "
         f"err={len(result.errors)} total={count}"

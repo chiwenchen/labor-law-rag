@@ -50,14 +50,21 @@ async def update_law(law_id: str, db: AsyncSession = Depends(get_db)):
     # Fetch articles
     try:
         articles = await fetch_law(law_info.law_id, law_info.law_name)
-    except httpx.HTTPStatusError as e:
-        # Mark as failed in supported_laws
+    except (httpx.HTTPStatusError, httpx.RequestError) as e:
         supported_law = (await db.execute(
             select(SupportedLaw).where(SupportedLaw.law_id == law_id)
         )).scalar_one_or_none()
         if supported_law:
             supported_law.last_status = "failed"
-            await db.commit()
+        # Write failure audit log
+        log = LawUpdateLog(
+            law_id=law_id,
+            articles_changed=0,
+            status="failed",
+            error_message=str(e)[:500],
+        )
+        db.add(log)
+        await db.commit()
         logger.error(f"[{law_id}] Fetch failed: {e}")
         raise HTTPException(status_code=502, detail=f"法規來源無法取得：{e}")
 

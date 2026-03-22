@@ -49,3 +49,93 @@ async def test_update_law_invalid_id_returns_404():
     ) as client:
         response = await client.post("/api/laws/INVALID_CODE/update")
     assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_law_valid_id_returns_success():
+    import sys
+    from types import ModuleType
+    from app.main import app
+    from app.db.database import get_db
+
+    # IndexResult dataclass — define locally to avoid importing llama_index
+    from dataclasses import dataclass, field as dc_field
+
+    @dataclass
+    class _IndexResult:
+        inserted: int = 0
+        updated: int = 0
+        skipped: int = 0
+        errors: list = dc_field(default_factory=list)
+
+    # Inject stub modules so the router's lazy imports don't trigger llama_index
+    mock_upsert = AsyncMock(return_value=_IndexResult(inserted=0, updated=0, skipped=0))
+    stub_indexer = ModuleType("app.services.indexer")
+    stub_indexer.upsert_articles = mock_upsert
+    stub_indexer.IndexResult = _IndexResult
+
+    mock_fetch = AsyncMock(return_value=[])
+    stub_fetcher = sys.modules.get("app.services.fetcher")
+
+    mock_db = AsyncMock()
+    mock_sl = MagicMock()
+    mock_sl.article_count = 98
+    mock_db.execute.return_value.scalar_one_or_none = MagicMock(return_value=mock_sl)
+
+    app.dependency_overrides[get_db] = lambda: mock_db
+    original_indexer = sys.modules.get("app.services.indexer")
+    sys.modules["app.services.indexer"] = stub_indexer
+    try:
+        with patch("app.services.fetcher.fetch_law", return_value=[]):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post("/api/laws/N0030001/update")
+    finally:
+        app.dependency_overrides.clear()
+        if original_indexer is None:
+            sys.modules.pop("app.services.indexer", None)
+        else:
+            sys.modules["app.services.indexer"] = original_indexer
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "status" in data
+    assert "article_count" in data
+    assert "message" in data
+
+
+@pytest.mark.asyncio
+async def test_update_law_fetch_failure_returns_502():
+    import sys
+    from types import ModuleType
+    from app.main import app
+    from app.db.database import get_db
+    import httpx
+
+    # Inject stub indexer so the router's lazy import doesn't trigger llama_index
+    stub_indexer = ModuleType("app.services.indexer")
+    stub_indexer.upsert_articles = AsyncMock()
+
+    mock_db = AsyncMock()
+    mock_db.execute.return_value.scalar_one_or_none = MagicMock(return_value=None)
+
+    app.dependency_overrides[get_db] = lambda: mock_db
+    original_indexer = sys.modules.get("app.services.indexer")
+    sys.modules["app.services.indexer"] = stub_indexer
+    try:
+        with patch("app.services.fetcher.fetch_law", side_effect=httpx.HTTPStatusError(
+            "404", request=MagicMock(), response=MagicMock(status_code=404)
+        )):
+            async with AsyncClient(
+                transport=ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post("/api/laws/N0030001/update")
+    finally:
+        app.dependency_overrides.clear()
+        if original_indexer is None:
+            sys.modules.pop("app.services.indexer", None)
+        else:
+            sys.modules["app.services.indexer"] = original_indexer
+
+    assert response.status_code == 502
