@@ -4,8 +4,8 @@ from app.services.indexer import upsert_articles, IndexResult
 from app.services.fetcher import LawArticleData
 
 SAMPLE_ARTICLES = [
-    LawArticleData(article_number="1", content="為規定勞動條件最低標準...", version="2024-01-17"),
-    LawArticleData(article_number="38", content="勞工應給予特別休假...", version="2024-01-17"),
+    LawArticleData(article_number="1", content="為規定勞動條件最低標準...", version="2024-01-17", law_id="N0030001", law_name="勞動基準法"),
+    LawArticleData(article_number="38", content="勞工應給予特別休假...", version="2024-01-17", law_id="N0030001", law_name="勞動基準法"),
 ]
 
 @pytest.mark.asyncio
@@ -40,7 +40,7 @@ async def test_upsert_unchanged_articles_skips(mock_embedder):
 
     with patch("app.services.indexer.get_embedder", return_value=mock_embedder):
         result = await upsert_articles(
-            [LawArticleData("38", "勞工應給予特別休假...", "2024-01-17")],
+            [LawArticleData("38", "勞工應給予特別休假...", "2024-01-17", "N0030001", "勞動基準法")],
             mock_db
         )
 
@@ -62,7 +62,7 @@ async def test_upsert_changed_articles_updates(mock_embedder):
 
     with patch("app.services.indexer.get_embedder", return_value=mock_embedder):
         result = await upsert_articles(
-            [LawArticleData("38", "新版本內容", "2024-01-17")],
+            [LawArticleData("38", "新版本內容", "2024-01-17", "N0030001", "勞動基準法")],
             mock_db
         )
 
@@ -103,7 +103,7 @@ async def test_upsert_records_embedding_error(mock_embedder):
 
     with patch("app.services.indexer.get_embedder", return_value=mock_embedder):
         result = await upsert_articles(
-            [LawArticleData("1", "為規定勞動條件...", "2024-01-17")],
+            [LawArticleData("1", "為規定勞動條件...", "2024-01-17", "N0030001", "勞動基準法")],
             mock_db
         )
 

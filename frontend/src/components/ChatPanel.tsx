@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 import { ChatMessage, CitedArticle } from "@/types";
 import { postQuery } from "@/lib/api";
 
@@ -73,7 +74,13 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
               {msg.role === "assistant" && (
                 <div className="text-blue-400 font-semibold text-xs mb-2">🤖 AI 回覆</div>
               )}
-              <p className="whitespace-pre-wrap">{msg.content}</p>
+              {msg.role === "assistant" ? (
+                <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0">
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap">{msg.content}</p>
+              )}
               {msg.warning && (
                 <div className="mt-2 text-yellow-400 text-xs bg-yellow-900/20 rounded p-2">
                   ⚠ {msg.warning}
