@@ -3,7 +3,7 @@ uvicorn[standard]==0.29.0
 sqlalchemy[asyncio]==2.0.30
 asyncpg==0.29.0
 psycopg2-binary==2.9.9
-pgvector==0.3.2
+pgvector==0.2.5
 llama-index==0.10.43
 llama-index-vector-stores-postgres==0.1.14
 llama-index-embeddings-huggingface==0.2.3
