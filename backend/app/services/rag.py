@@ -16,7 +16,7 @@ SIMILARITY_WARN_THRESHOLD = 0.75
 TOP_K = 5
 MAX_TOKENS = 1024
 
-SYSTEM_PROMPT = """你是一位專業的台灣勞基法助理，服務對象為企業 HR。
+SYSTEM_PROMPT = """你是一位專業的台灣勞動法規助理，服務對象為企業 HR。
 請只根據以下提供的法條內容回答問題，不得自行推論或引用條文以外的資訊。
 如果提供的法條不足以回答問題，請明確說明「現行法條無明確規定，建議諮詢勞工局」。
 回答請使用繁體中文，語氣專業清晰。"""
@@ -30,15 +30,26 @@ class QueryResult:
     cited_articles: list
 
 
-async def _search_articles(embedding: list[float], db: AsyncSession) -> list:
+async def _search_articles(
+    embedding: list[float],
+    db: AsyncSession,
+    law_ids: list[str] | None = None,
+) -> list:
     # Format embedding as a PostgreSQL vector literal.
     # Safe to inline: embedding comes from our model, not user input.
     vec_literal = "[" + ",".join(str(x) for x in embedding) + "]"
+
+    # law_ids are whitelisted in the router against LAW_REGISTRY before reaching here.
+    law_filter = ""
+    if law_ids:
+        ids_literal = "ARRAY[" + ",".join(f"'{lid}'" for lid in law_ids) + "]"
+        law_filter = f"AND law_id = ANY({ids_literal})"
+
     sql = text(f"""
-        SELECT article_number, title, content,
+        SELECT article_number, title, content, law_id, law_name,
                1 - (embedding <=> '{vec_literal}'::vector) AS similarity
         FROM law_articles
-        WHERE is_active = true
+        WHERE is_active = true {law_filter}
         ORDER BY embedding <=> '{vec_literal}'::vector
         LIMIT :k
     """)
@@ -48,7 +59,7 @@ async def _search_articles(embedding: list[float], db: AsyncSession) -> list:
 
 def _call_claude(question: str, articles: list) -> str:
     context = "\n\n".join(
-        f"【第{row.article_number}條】\n{row.content}" for row in articles
+        f"【{row.law_name}第{row.article_number}條】\n{row.content}" for row in articles
     )
     client = Anthropic(api_key=settings.anthropic_api_key)
     try:
@@ -65,10 +76,14 @@ def _call_claude(question: str, articles: list) -> str:
         raise RuntimeError(f"Claude API call failed: {e}") from e
 
 
-async def query_law(question: str, db: AsyncSession) -> QueryResult:
+async def query_law(
+    question: str,
+    db: AsyncSession,
+    law_ids: list[str] | None = None,
+) -> QueryResult:
     embedder = get_embedder()
     question_embedding = embedder.get_text_embedding(question)
-    articles = await _search_articles(question_embedding, db)
+    articles = await _search_articles(question_embedding, db, law_ids=law_ids or None)
 
     if not articles or articles[0].similarity < SIMILARITY_REJECT_THRESHOLD:
         return QueryResult(
@@ -85,7 +100,13 @@ async def query_law(question: str, db: AsyncSession) -> QueryResult:
     answer = _call_claude(question, articles)
 
     cited = [
-        {"article_number": row.article_number, "title": row.title, "similarity": round(row.similarity, 3)}
+        {
+            "article_number": row.article_number,
+            "title": row.title,
+            "law_id": row.law_id,
+            "law_name": row.law_name,
+            "similarity": round(row.similarity, 3),
+        }
         for row in articles
     ]
 
