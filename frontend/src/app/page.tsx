@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import ChatPanel from "@/components/ChatPanel";
 import ArticlePanel from "@/components/ArticlePanel";
-import { ChatMessage, CitedArticle } from "@/types";
+import { ChatMessage, CitedArticle, QueryHistoryItem } from "@/types";
 
 export default function Home() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -15,7 +15,7 @@ export default function Home() {
     setActiveSessionId(sessionId);
     setCitedArticles([]);
     const history = await getSessionHistory(sessionId);
-    const msgs: ChatMessage[] = history.flatMap((h: any) => [
+    const msgs: ChatMessage[] = history.flatMap((h: QueryHistoryItem) => [
       { role: "user" as const, content: h.question },
       {
         role: "assistant" as const,
@@ -24,7 +24,7 @@ export default function Home() {
       },
     ]);
     setMessages(msgs);
-    const lastCited = history.findLast((h: any) => h.cited_articles?.length)?.cited_articles;
+    const lastCited = history.findLast((h: QueryHistoryItem) => h.cited_articles?.length)?.cited_articles;
     if (lastCited) setCitedArticles(lastCited);
   }, []);
 
