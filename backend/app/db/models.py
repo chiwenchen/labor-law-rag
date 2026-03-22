@@ -25,8 +25,8 @@ class LawArticle(Base):
     )
 
     id = Column(Integer, primary_key=True)
-    law_id = Column(String(20), nullable=False, default="N0030001")
-    law_name = Column(String(100), nullable=False, default="勞動基準法")
+    law_id = Column(String(20), nullable=False, server_default="N0030001")
+    law_name = Column(String(100), nullable=False, server_default="勞動基準法")
     article_number = Column(String(20), nullable=False)
     title = Column(String(200))
     content = Column(Text, nullable=False)
@@ -62,7 +62,7 @@ class LawUpdateLog(Base):
     __tablename__ = "law_update_logs"
 
     id = Column(Integer, primary_key=True)
-    law_id = Column(String(20), nullable=False, default="N0030001")
+    law_id = Column(String(20), nullable=False, server_default="N0030001")
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
     articles_changed = Column(Integer, default=0)
     status = Column(String(20), nullable=False)
