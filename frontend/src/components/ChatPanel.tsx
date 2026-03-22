@@ -108,13 +108,19 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-3 bg-slate-900 border-t border-slate-700 flex gap-2">
-        <input
+      <div className="p-3 bg-slate-900 border-t border-slate-700 flex gap-2 items-end">
+        <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSubmit()}
-          placeholder="輸入您的勞基法問題..."
-          className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 placeholder-slate-500 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
+          placeholder="輸入您的勞基法問題... （Ctrl+Enter 送出）"
+          rows={2}
+          className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 placeholder-slate-500 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500 resize-none"
           disabled={loading}
           maxLength={500}
         />
