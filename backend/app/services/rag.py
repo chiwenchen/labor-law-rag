@@ -31,15 +31,18 @@ class QueryResult:
 
 
 async def _search_articles(embedding: list[float], db: AsyncSession) -> list:
-    sql = text("""
+    # Format embedding as a PostgreSQL vector literal.
+    # Safe to inline: embedding comes from our model, not user input.
+    vec_literal = "[" + ",".join(str(x) for x in embedding) + "]"
+    sql = text(f"""
         SELECT article_number, title, content,
-               1 - (embedding <=> :embedding::vector) AS similarity
+               1 - (embedding <=> '{vec_literal}'::vector) AS similarity
         FROM law_articles
         WHERE is_active = true
-        ORDER BY embedding <=> :embedding::vector
+        ORDER BY embedding <=> '{vec_literal}'::vector
         LIMIT :k
     """)
-    rows = (await db.execute(sql, {"embedding": str(embedding), "k": TOP_K})).all()
+    rows = (await db.execute(sql, {"k": TOP_K})).all()
     return rows
 
 
