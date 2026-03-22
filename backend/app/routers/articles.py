@@ -43,6 +43,7 @@ async def law_status(db: AsyncSession = Depends(get_db)):
 @router.post("/law/trigger-update")
 async def trigger_update():
     """Manually trigger a law update — use this once to seed initial data."""
+    # Deferred imports avoid circular import: articles router ← main ← scheduler ← services
     import asyncio
     from app.services.scheduler import run_law_update
     asyncio.create_task(run_law_update())

@@ -8,11 +8,17 @@ from app.routers import query, sessions, articles
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.services.scheduler import start_scheduler
-    start_scheduler()
+    from app.services.scheduler import start_scheduler, scheduler
+    try:
+        start_scheduler()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to start scheduler: {e}")
     yield
-    from app.services.scheduler import scheduler
-    scheduler.shutdown()
+    try:
+        scheduler.shutdown()
+    except Exception:
+        pass  # Already stopped or never started
 
 
 app = FastAPI(title="勞基法 RAG API", lifespan=lifespan)

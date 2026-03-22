@@ -11,6 +11,7 @@ scheduler = AsyncIOScheduler()
 
 async def run_law_update():
     logger.info("Starting weekly law update...")
+    log = None
     async with AsyncSessionLocal() as db:
         try:
             articles = await fetch_labor_law_articles()
@@ -23,8 +24,13 @@ async def run_law_update():
         except Exception as e:
             log = LawUpdateLog(status="failed", error_message=str(e))
             logger.error(f"Law update failed: {e}")
-        db.add(log)
-        await db.commit()
+        finally:
+            if log is not None:
+                try:
+                    db.add(log)
+                    await db.commit()
+                except Exception as log_err:
+                    logger.error(f"Failed to write update log: {log_err}")
 
 def start_scheduler():
     scheduler.add_job(run_law_update, "cron", day_of_week="mon", hour=2, minute=0)
