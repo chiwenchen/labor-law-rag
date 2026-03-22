@@ -10,6 +10,7 @@ export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [citedArticles, setCitedArticles] = useState<CitedArticle[]>([]);
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
+  const [selectedLawIds, setSelectedLawIds] = useState<string[]>([]); // [] = all laws
 
   const handleSelectSession = useCallback(async (sessionId: string) => {
     const { getSessionHistory } = await import("@/lib/api");
@@ -53,12 +54,16 @@ export default function Home() {
         onSelectSession={handleSelectSession}
         onNewSession={handleNewSession}
         refreshKey={sidebarRefreshKey}
+        selectedLawIds={selectedLawIds}
+        onLawScopeChange={setSelectedLawIds}
+        showLawScope={true}
       />
       <ChatPanel
         sessionId={activeSessionId}
         messages={messages}
         onNewMessage={handleNewMessage}
         onArticlesChange={setCitedArticles}
+        selectedLawIds={selectedLawIds}
       />
       <ArticlePanel citedArticles={citedArticles} />
     </main>

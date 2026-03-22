@@ -9,9 +9,10 @@ interface Props {
   messages: ChatMessage[];
   onNewMessage: (userMsg: ChatMessage, assistantMsg: ChatMessage, sessionId: string) => void;
   onArticlesChange: (articles: CitedArticle[]) => void;
+  selectedLawIds: string[];
 }
 
-export default function ChatPanel({ sessionId, messages, onNewMessage, onArticlesChange }: Props) {
+export default function ChatPanel({ sessionId, messages, onNewMessage, onArticlesChange, selectedLawIds }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -34,11 +35,15 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
     const userMsg: ChatMessage = { role: "user", content: question };
 
     try {
-      const data = await postQuery(question, sessionId ?? undefined);
+      const data = await postQuery(
+        question,
+        sessionId ?? undefined,
+        selectedLawIds.length > 0 ? selectedLawIds : undefined,
+      );
       const assistantMsg: ChatMessage = {
         role: "assistant",
         content: data.is_out_of_scope
-          ? "此問題超出勞基法範圍，無法提供答案。"
+          ? "此問題超出所選法規範圍，無法提供答案。"
           : data.answer ?? "",
         cited_articles: data.cited_articles,
         warning: data.warning,

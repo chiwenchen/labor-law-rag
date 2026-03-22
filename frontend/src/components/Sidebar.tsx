@@ -1,18 +1,33 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { getSessions, getLawStatus } from "@/lib/api";
 import { SessionSummary, LawStatus } from "@/types";
+import LawScopeSelector from "@/components/LawScopeSelector";
 
 interface Props {
   activeSessionId: string | null;
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
   refreshKey?: number;
+  selectedLawIds: string[];
+  onLawScopeChange: (ids: string[]) => void;
+  showLawScope?: boolean; // false on /laws page
 }
 
-export default function Sidebar({ activeSessionId, onSelectSession, onNewSession, refreshKey }: Props) {
+export default function Sidebar({
+  activeSessionId,
+  onSelectSession,
+  onNewSession,
+  refreshKey,
+  selectedLawIds,
+  onLawScopeChange,
+  showLawScope = true,
+}: Props) {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [status, setStatus] = useState<LawStatus | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     getSessions().then(setSessions).catch(console.error);
@@ -31,6 +46,13 @@ export default function Sidebar({ activeSessionId, onSelectSession, onNewSession
       >
         + 新增查詢
       </button>
+
+      {showLawScope && (
+        <LawScopeSelector
+          selectedLawIds={selectedLawIds}
+          onChange={onLawScopeChange}
+        />
+      )}
 
       <div className="flex-1 overflow-y-auto flex flex-col gap-1">
         {sessions.map((s) => (
@@ -56,11 +78,27 @@ export default function Sidebar({ activeSessionId, onSelectSession, onNewSession
               ? new Date(status.last_updated).toLocaleDateString("zh-TW")
               : "尚未更新"}
           </div>
-          <div className={`text-[10px] mt-1 ${status.status === "success" ? "text-green-500" : "text-yellow-500"}`}>
+          <div
+            className={`text-[10px] mt-1 ${
+              status.status === "success" ? "text-green-500" : "text-yellow-500"
+            }`}
+          >
             {status.status === "success" ? "✓ 最新版本" : "⚠ 更新異常"}
           </div>
         </div>
       )}
+
+      {/* Law management nav link */}
+      <Link
+        href="/laws"
+        className={`text-xs text-center py-1.5 rounded transition-colors ${
+          pathname === "/laws"
+            ? "bg-blue-950 text-blue-300 border border-blue-700"
+            : "text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+        }`}
+      >
+        📋 法規管理
+      </Link>
     </aside>
   );
 }
