@@ -9,6 +9,7 @@ export default function Home() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [citedArticles, setCitedArticles] = useState<CitedArticle[]>([]);
+  const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
 
   const handleSelectSession = useCallback(async (sessionId: string) => {
     const { getSessionHistory } = await import("@/lib/api");
@@ -37,7 +38,10 @@ export default function Home() {
   const handleNewMessage = useCallback(
     (userMsg: ChatMessage, assistantMsg: ChatMessage, sessionId: string) => {
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
-      if (!activeSessionId) setActiveSessionId(sessionId);
+      if (!activeSessionId) {
+        setActiveSessionId(sessionId);
+        setSidebarRefreshKey((k) => k + 1);
+      }
     },
     [activeSessionId]
   );
@@ -48,6 +52,7 @@ export default function Home() {
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
         onNewSession={handleNewSession}
+        refreshKey={sidebarRefreshKey}
       />
       <ChatPanel
         sessionId={activeSessionId}

@@ -7,14 +7,18 @@ interface Props {
   activeSessionId: string | null;
   onSelectSession: (id: string) => void;
   onNewSession: () => void;
+  refreshKey?: number;
 }
 
-export default function Sidebar({ activeSessionId, onSelectSession, onNewSession }: Props) {
+export default function Sidebar({ activeSessionId, onSelectSession, onNewSession, refreshKey }: Props) {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [status, setStatus] = useState<LawStatus | null>(null);
 
   useEffect(() => {
     getSessions().then(setSessions).catch(console.error);
+  }, [refreshKey]);
+
+  useEffect(() => {
     getLawStatus().then(setStatus).catch(console.error);
   }, []);
 
