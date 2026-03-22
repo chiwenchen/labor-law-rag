@@ -4,10 +4,8 @@ sqlalchemy[asyncio]==2.0.30
 asyncpg==0.29.0
 psycopg2-binary==2.9.9
 pgvector==0.2.5
-llama-index==0.10.43
-llama-index-vector-stores-postgres==0.1.14
+llama-index-core==0.10.43
 llama-index-embeddings-huggingface==0.2.3
-llama-index-llms-anthropic==0.3.0
 sentence-transformers==3.0.1
 anthropic==0.28.0
 apscheduler==3.10.4
