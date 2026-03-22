@@ -41,9 +41,10 @@ async def _search_articles(
 
     # law_ids are whitelisted in the router against LAW_REGISTRY before reaching here.
     law_filter = ""
+    params: dict = {"k": TOP_K}
     if law_ids:
-        ids_literal = "ARRAY[" + ",".join(f"'{lid}'" for lid in law_ids) + "]"
-        law_filter = f"AND law_id = ANY({ids_literal})"
+        law_filter = "AND law_id = ANY(:law_ids)"
+        params["law_ids"] = law_ids
 
     sql = text(f"""
         SELECT article_number, title, content, law_id, law_name,
@@ -53,7 +54,7 @@ async def _search_articles(
         ORDER BY embedding <=> '{vec_literal}'::vector
         LIMIT :k
     """)
-    rows = (await db.execute(sql, {"k": TOP_K})).all()
+    rows = (await db.execute(sql, params)).all()
     return rows
 
 
@@ -83,7 +84,7 @@ async def query_law(
 ) -> QueryResult:
     embedder = get_embedder()
     question_embedding = embedder.get_text_embedding(question)
-    articles = await _search_articles(question_embedding, db, law_ids=law_ids or None)
+    articles = await _search_articles(question_embedding, db, law_ids=law_ids)
 
     if not articles or articles[0].similarity < SIMILARITY_REJECT_THRESHOLD:
         return QueryResult(
