@@ -39,7 +39,11 @@ export default function ArticlePanel({ citedArticles }: Props) {
               onClick={() =>
                 setCollapsed((prev) => {
                   const next = new Set(prev);
-                  isCollapsed ? next.delete(article.article_number) : next.add(article.article_number);
+                  if (isCollapsed) {
+                    next.delete(article.article_number);
+                  } else {
+                    next.add(article.article_number);
+                  }
                   return next;
                 })
               }
