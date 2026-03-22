@@ -1,9 +1,13 @@
+from __future__ import annotations
+import logging
 from dataclasses import dataclass, field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.db.models import LawArticle
+from sqlalchemy import select, func
+from app.db.models import LawArticle, SupportedLaw
 from app.services.fetcher import LawArticleData
 from app.services.embedder import get_embedder
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -17,17 +21,28 @@ class IndexResult:
 async def upsert_articles(
     articles: list[LawArticleData],
     db: AsyncSession,
+    law_id: str,
+    law_name: str,
 ) -> IndexResult:
+    """Upsert articles for a single law. Marks removed articles as inactive.
+    Updates supported_laws article_count and last_status on completion.
+    """
     result = IndexResult()
     embedder = get_embedder()
 
-    # Load all existing articles into a dict keyed by article_number
-    stmt = select(LawArticle).where(LawArticle.is_active == True)
-    existing = {a.article_number: a for a in (await db.execute(stmt)).scalars().all()}
+    # Load existing active articles for THIS law only
+    stmt = select(LawArticle).where(
+        LawArticle.law_id == law_id,
+        LawArticle.is_active == True,
+    )
+    existing = {
+        a.article_number: a
+        for a in (await db.execute(stmt)).scalars().all()
+    }
 
     incoming_numbers = {a.article_number for a in articles}
 
-    # Mark obsolete articles as inactive
+    # Mark obsolete articles (belong to this law, not in new fetch) as inactive
     for number, article in existing.items():
         if number not in incoming_numbers:
             article.is_active = False
@@ -42,26 +57,53 @@ async def upsert_articles(
         try:
             embedding = embedder.get_text_embedding(article_data.content)
         except Exception as e:
-            result.errors.append(f"Article {article_data.article_number}: embedding failed — {e}")
+            result.errors.append(
+                f"Article {article_data.article_number}: embedding failed — {e}"
+            )
             continue
 
-        # NOTE: SQLAlchemy ORM requires in-place mutation to track changes for UPDATE.
+        # NOTE: SQLAlchemy ORM requires in-place mutation to track changes.
         # This is an intentional exception to the project's immutability rule.
         if existing_article:
             existing_article.content = article_data.content
             existing_article.embedding = embedding
             existing_article.version = article_data.version
+            existing_article.law_name = law_name
             result.updated += 1
         else:
-            new_article = LawArticle(
+            db.add(LawArticle(
+                law_id=law_id,
+                law_name=law_name,
                 article_number=article_data.article_number,
                 content=article_data.content,
                 embedding=embedding,
                 version=article_data.version,
                 is_active=True,
-            )
-            db.add(new_article)
+            ))
             result.inserted += 1
 
+    await db.flush()
+
+    # Update supported_laws with real count
+    count = (await db.execute(
+        select(func.count()).select_from(LawArticle).where(
+            LawArticle.law_id == law_id,
+            LawArticle.is_active == True,
+        )
+    )).scalar()
+
+    supported_law = (await db.execute(
+        select(SupportedLaw).where(SupportedLaw.law_id == law_id)
+    )).scalar_one_or_none()
+
+    if supported_law:
+        supported_law.article_count = count
+        supported_law.last_updated = func.now()
+        supported_law.last_status = "success"
+
     await db.commit()
+    logger.info(
+        f"[{law_id}] +{result.inserted} ~{result.updated} skip={result.skipped} "
+        f"err={len(result.errors)} total={count}"
+    )
     return result

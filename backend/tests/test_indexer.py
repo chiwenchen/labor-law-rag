@@ -18,7 +18,7 @@ async def test_upsert_new_articles_inserts_all(mock_embedder):
     mock_db.execute = AsyncMock(return_value=execute_result)
 
     with patch("app.services.indexer.get_embedder", return_value=mock_embedder):
-        result = await upsert_articles(SAMPLE_ARTICLES, mock_db)
+        result = await upsert_articles(SAMPLE_ARTICLES, mock_db, "N0030001", "勞動基準法")
 
     assert result.inserted == 2
     assert result.updated == 0
@@ -41,7 +41,9 @@ async def test_upsert_unchanged_articles_skips(mock_embedder):
     with patch("app.services.indexer.get_embedder", return_value=mock_embedder):
         result = await upsert_articles(
             [LawArticleData("38", "勞工應給予特別休假...", "2024-01-17", "N0030001", "勞動基準法")],
-            mock_db
+            mock_db,
+            "N0030001",
+            "勞動基準法",
         )
 
     assert result.skipped == 1
@@ -63,7 +65,9 @@ async def test_upsert_changed_articles_updates(mock_embedder):
     with patch("app.services.indexer.get_embedder", return_value=mock_embedder):
         result = await upsert_articles(
             [LawArticleData("38", "新版本內容", "2024-01-17", "N0030001", "勞動基準法")],
-            mock_db
+            mock_db,
+            "N0030001",
+            "勞動基準法",
         )
 
     assert result.updated == 1
@@ -87,7 +91,7 @@ async def test_upsert_marks_obsolete_articles_inactive(mock_embedder):
 
     with patch("app.services.indexer.get_embedder", return_value=mock_embedder):
         # Pass empty incoming list — all existing become obsolete
-        result = await upsert_articles([], mock_db)
+        result = await upsert_articles([], mock_db, "N0030001", "勞動基準法")
 
     assert obsolete.is_active is False
 
@@ -104,7 +108,9 @@ async def test_upsert_records_embedding_error(mock_embedder):
     with patch("app.services.indexer.get_embedder", return_value=mock_embedder):
         result = await upsert_articles(
             [LawArticleData("1", "為規定勞動條件...", "2024-01-17", "N0030001", "勞動基準法")],
-            mock_db
+            mock_db,
+            "N0030001",
+            "勞動基準法",
         )
 
     assert result.inserted == 0
