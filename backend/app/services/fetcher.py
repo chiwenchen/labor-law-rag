@@ -16,8 +16,8 @@ async def fetch_labor_law_articles() -> list[LawArticleData]:
     url = f"{LAW_API_BASE}/{LABOR_LAW_PCODE}/AllArticles"
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.get(url)
-        await response.raise_for_status()
-        data = await response.json()
+        response.raise_for_status()
+        data = response.json()
 
     version = data.get("LawFetchDate", "unknown")
     articles = []
