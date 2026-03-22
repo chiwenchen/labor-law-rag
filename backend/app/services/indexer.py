@@ -39,8 +39,14 @@ async def upsert_articles(
             result.skipped += 1
             continue
 
-        embedding = embedder.get_text_embedding(article_data.content)
+        try:
+            embedding = embedder.get_text_embedding(article_data.content)
+        except Exception as e:
+            result.errors.append(f"Article {article_data.article_number}: embedding failed — {e}")
+            continue
 
+        # NOTE: SQLAlchemy ORM requires in-place mutation to track changes for UPDATE.
+        # This is an intentional exception to the project's immutability rule.
         if existing_article:
             existing_article.content = article_data.content
             existing_article.embedding = embedding
