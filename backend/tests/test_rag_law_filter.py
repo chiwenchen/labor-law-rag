@@ -43,8 +43,8 @@ async def test_query_law_with_law_ids_filter_passes_to_search():
         result = await query_law("test", mock_db, law_ids=["N0030001"])
 
     mock_search.assert_called_once()
-    _, kwargs = mock_search.call_args
-    assert kwargs.get("law_ids") == ["N0030001"] or mock_search.call_args[0][2] == ["N0030001"]
+    _, call_kwargs = mock_search.call_args
+    assert call_kwargs.get("law_ids") == ["N0030001"]
 
 
 @pytest.mark.asyncio

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import math
 from dataclasses import dataclass, field
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,11 +36,21 @@ async def _search_articles(
     db: AsyncSession,
     law_ids: list[str] | None = None,
 ) -> list:
+    # Defensive: validate law_ids are from the registry
+    if law_ids:
+        from app.services.law_registry import VALID_LAW_IDS
+        invalid = [lid for lid in law_ids if lid not in VALID_LAW_IDS]
+        if invalid:
+            raise ValueError(f"Unknown law_ids: {invalid}")
+
+    # Validate all embedding values are finite floats before inlining into SQL
+    if not all(isinstance(x, (int, float)) and math.isfinite(x) for x in embedding):
+        raise ValueError("Embedding contains non-finite values")
+
     # Format embedding as a PostgreSQL vector literal.
     # Safe to inline: embedding comes from our model, not user input.
     vec_literal = "[" + ",".join(str(x) for x in embedding) + "]"
 
-    # law_ids are whitelisted in the router against LAW_REGISTRY before reaching here.
     law_filter = ""
     params: dict = {"k": TOP_K}
     if law_ids:
