@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import ChatPanel from "@/components/ChatPanel";
 import ArticlePanel from "@/components/ArticlePanel";
+import ArticleSheet from "@/components/ArticleSheet";
 import { ChatMessage, CitedArticle, QueryHistoryItem } from "@/types";
 
 export default function Home() {
@@ -11,6 +12,7 @@ export default function Home() {
   const [citedArticles, setCitedArticles] = useState<CitedArticle[]>([]);
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [selectedLawIds, setSelectedLawIds] = useState<string[]>([]); // [] = all laws
+  const [selectedArticle, setSelectedArticle] = useState<CitedArticle | null>(null);
 
   const handleSelectSession = useCallback(async (sessionId: string) => {
     const { getSessionHistory } = await import("@/lib/api");
@@ -64,8 +66,11 @@ export default function Home() {
         onNewMessage={handleNewMessage}
         onArticlesChange={setCitedArticles}
         selectedLawIds={selectedLawIds}
+        onOpenDrawer={() => {}} // Mobile drawer toggle (reserved for future sidebar state)
+        onArticleSelect={setSelectedArticle}
       />
       <ArticlePanel citedArticles={citedArticles} />
+      <ArticleSheet article={selectedArticle} onClose={() => setSelectedArticle(null)} />
     </main>
   );
 }

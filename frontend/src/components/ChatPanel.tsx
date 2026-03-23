@@ -10,9 +10,11 @@ interface Props {
   onNewMessage: (userMsg: ChatMessage, assistantMsg: ChatMessage, sessionId: string) => void;
   onArticlesChange: (articles: CitedArticle[]) => void;
   selectedLawIds: string[];
+  onOpenDrawer: () => void;
+  onArticleSelect: (article: CitedArticle) => void;
 }
 
-export default function ChatPanel({ sessionId, messages, onNewMessage, onArticlesChange, selectedLawIds }: Props) {
+export default function ChatPanel({ sessionId, messages, onNewMessage, onArticlesChange, selectedLawIds, onOpenDrawer, onArticleSelect }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -61,6 +63,14 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
 
   return (
     <div className="flex-1 flex flex-col bg-slate-800 min-w-0">
+      {/* Mobile header bar */}
+      <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-slate-900 border-b border-slate-700 shrink-0">
+        <button onClick={onOpenDrawer} className="text-slate-400 text-xl">☰</button>
+        <span className="text-slate-200 text-sm font-medium flex-1">勞動法規查詢</span>
+        <span className="text-slate-500 text-xs bg-slate-800 px-2 py-0.5 rounded-full">
+          {selectedLawIds.length === 0 ? "全部法規" : `${selectedLawIds.length} 部`}
+        </span>
+      </div>
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
         {messages.length === 0 && (
           <div className="text-slate-500 text-sm text-center mt-20">
@@ -70,7 +80,7 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
+              className={`max-w-[90%] md:max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
                 msg.role === "user"
                   ? "bg-blue-700 text-white rounded-br-sm"
                   : "bg-slate-900 text-slate-200 rounded-bl-sm"
@@ -95,13 +105,14 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
                 <div className="mt-3 flex flex-wrap gap-2 items-center">
                   <span className="text-slate-500 text-xs">參考法條：</span>
                   {msg.cited_articles.map((c) => (
-                    <span
+                    <button
                       key={`${c.law_id}-${c.article_number}`}
+                      onClick={() => onArticleSelect(c)}
                       className="bg-blue-950 border border-blue-700 text-blue-300 px-2 py-1 rounded-full text-xs"
                       title={c.law_name}
                     >
                       {c.law_name} §{c.article_number}
-                    </span>
+                    </button>
                   ))}
                   <span className="text-slate-600 text-xs border border-slate-700 px-2 py-1 rounded-full">
                     相關度 {Math.round(msg.cited_articles[0].similarity * 100)}%
@@ -131,7 +142,7 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
               handleSubmit();
             }
           }}
-          placeholder="輸入您的勞基法問題... （Ctrl+Enter 送出）"
+          placeholder="輸入問題..."
           rows={2}
           className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 placeholder-slate-500 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-blue-500 resize-none"
           disabled={loading}
@@ -140,9 +151,10 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
         <button
           onClick={handleSubmit}
           disabled={loading || !input.trim()}
-          className="bg-blue-700 text-white rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors hover:bg-blue-600 rounded-full w-10 h-10 p-0 flex items-center justify-center text-lg md:rounded-lg md:w-auto md:h-auto md:px-4 md:py-2.5 md:text-sm md:font-medium"
         >
-          送出
+          <span className="md:hidden">↑</span>
+          <span className="hidden md:inline">送出</span>
         </button>
       </div>
     </div>
