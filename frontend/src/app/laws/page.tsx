@@ -48,17 +48,25 @@ export default function LawsPage() {
 
   return (
     <main className="flex h-screen bg-slate-800 text-white overflow-hidden">
-      <Sidebar
-        activeSessionId={null}
-        onSelectSession={() => {}}
-        onNewSession={() => {}}
-        selectedLawIds={[]}
-        onLawScopeChange={() => {}}
-        showLawScope={false}
-      />
+      <div className="hidden md:block">
+        <Sidebar
+          activeSessionId={null}
+          onSelectSession={() => {}}
+          onNewSession={() => {}}
+          selectedLawIds={[]}
+          onLawScopeChange={() => {}}
+          showLawScope={false}
+        />
+      </div>
 
-      <div className="flex-1 flex flex-col min-w-0 p-6">
-        <div className="flex items-center gap-4 mb-6">
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-10 flex items-center gap-3 px-4 py-3 bg-slate-900 border-b border-slate-700">
+        <Link href="/" className="text-blue-400 text-sm">← 返回</Link>
+        <span className="text-slate-200 text-sm font-medium flex-1">法規管理</span>
+      </div>
+
+      <div className="flex-1 flex flex-col min-w-0 p-6 pt-[52px] md:pt-6">
+        <div className="hidden md:flex items-center gap-4 mb-6">
           <Link href="/" className="text-slate-400 hover:text-white text-sm transition-colors">
             ← 返回查詢
           </Link>
@@ -67,7 +75,7 @@ export default function LawsPage() {
 
         <div className="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
           {/* Table header */}
-          <div className="grid grid-cols-[2fr_80px_140px_100px_80px] gap-4 px-4 py-2.5 bg-slate-950 text-slate-500 text-xs font-medium uppercase tracking-wide border-b border-slate-700">
+          <div className="hidden md:grid grid-cols-[2fr_80px_140px_100px_80px] gap-4 px-4 py-2.5 bg-slate-950 text-slate-500 text-xs font-medium uppercase tracking-wide border-b border-slate-700">
             <span>法規名稱</span>
             <span>條文數</span>
             <span>最後更新</span>
@@ -82,34 +90,72 @@ export default function LawsPage() {
           )}
 
           {laws.map((law, i) => (
-            <div
-              key={law.law_id}
-              className={`grid grid-cols-[2fr_80px_140px_100px_80px] gap-4 px-4 py-3 items-center text-sm ${
-                i > 0 ? "border-t border-slate-800" : ""
-              }`}
-            >
-              <span className="text-slate-200 font-medium">{law.law_name}</span>
-              <span className="text-slate-400 text-xs">
-                {law.article_count > 0 ? law.article_count : "—"}
-              </span>
-              <span className="text-slate-500 text-xs">
-                {law.last_updated
-                  ? new Date(law.last_updated).toLocaleDateString("zh-TW")
-                  : "尚未更新"}
-              </span>
-              <span>
-                <StatusBadge status={law.last_status} />
+            <div key={law.law_id} className={i > 0 ? "border-t border-slate-800" : ""}>
+              {/* Desktop grid row */}
+              <div className="hidden md:grid grid-cols-[2fr_80px_140px_100px_80px] gap-4 px-4 py-3 items-center text-sm">
+                <span className="text-slate-200 font-medium">{law.law_name}</span>
+                <span className="text-slate-400 text-xs">
+                  {law.article_count > 0 ? law.article_count : "—"}
+                </span>
+                <span className="text-slate-500 text-xs">
+                  {law.last_updated
+                    ? new Date(law.last_updated).toLocaleDateString("zh-TW")
+                    : "尚未更新"}
+                </span>
+                <span>
+                  <StatusBadge status={law.last_status} />
+                  {errors[law.law_id] && (
+                    <div className="text-red-400 text-[10px] mt-0.5 leading-tight">
+                      {errors[law.law_id]}
+                    </div>
+                  )}
+                </span>
+                <span>
+                  <button
+                    onClick={() => handleUpdate(law.law_id)}
+                    disabled={updating[law.law_id]}
+                    className={`text-xs px-3 py-1.5 rounded transition-colors w-full ${
+                      law.last_status === "never_run"
+                        ? "bg-blue-700 text-white hover:bg-blue-600 disabled:opacity-50"
+                        : "bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-50"
+                    } disabled:cursor-not-allowed`}
+                  >
+                    {updating[law.law_id] ? (
+                      <span className="inline-flex items-center gap-1">
+                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                        更新中
+                      </span>
+                    ) : law.last_status === "never_run" ? (
+                      "載入"
+                    ) : (
+                      "更新"
+                    )}
+                  </button>
+                </span>
+              </div>
+
+              {/* Mobile card */}
+              <div className="md:hidden px-4 py-3">
+                <div className="flex justify-between items-start mb-1">
+                  <span className="text-slate-200 font-medium text-sm">{law.law_name}</span>
+                  <StatusBadge status={law.last_status} />
+                </div>
+                <div className="text-slate-500 text-xs mb-2">
+                  {law.article_count > 0 ? `${law.article_count} 條` : "尚未載入"} ·{" "}
+                  {law.last_updated
+                    ? new Date(law.last_updated).toLocaleDateString("zh-TW")
+                    : "從未更新"}
+                </div>
                 {errors[law.law_id] && (
-                  <div className="text-red-400 text-[10px] mt-0.5 leading-tight">
-                    {errors[law.law_id]}
-                  </div>
+                  <div className="text-red-400 text-[10px] mb-1">{errors[law.law_id]}</div>
                 )}
-              </span>
-              <span>
                 <button
                   onClick={() => handleUpdate(law.law_id)}
                   disabled={updating[law.law_id]}
-                  className={`text-xs px-3 py-1.5 rounded transition-colors w-full ${
+                  className={`text-xs px-3 py-1.5 rounded transition-colors ${
                     law.last_status === "never_run"
                       ? "bg-blue-700 text-white hover:bg-blue-600 disabled:opacity-50"
                       : "bg-slate-700 text-slate-300 hover:bg-slate-600 disabled:opacity-50"
@@ -129,7 +175,7 @@ export default function LawsPage() {
                     "更新"
                   )}
                 </button>
-              </span>
+              </div>
             </div>
           ))}
         </div>
