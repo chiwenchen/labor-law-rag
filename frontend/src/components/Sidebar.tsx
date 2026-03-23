@@ -14,6 +14,8 @@ interface Props {
   selectedLawIds: string[];
   onLawScopeChange: (ids: string[]) => void;
   showLawScope?: boolean; // false on /laws page
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 export default function Sidebar({
@@ -24,6 +26,8 @@ export default function Sidebar({
   selectedLawIds,
   onLawScopeChange,
   showLawScope = true,
+  mobileOpen = false,
+  onMobileClose,
 }: Props) {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [status, setStatus] = useState<LawStatus | null>(null);
@@ -38,7 +42,18 @@ export default function Sidebar({
   }, []);
 
   return (
-    <aside className="w-56 bg-slate-900 flex flex-col p-3 gap-3 shrink-0">
+    <aside
+      className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 flex flex-col p-3 gap-3 shrink-0 transition-transform duration-300 relative md:relative md:translate-x-0 md:w-56 md:z-auto ${
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
+      <button
+        onClick={onMobileClose}
+        className="md:hidden absolute top-3 right-3 text-slate-500 hover:text-slate-300 text-lg leading-none p-1"
+        aria-label="關閉選單"
+      >
+        ✕
+      </button>
       <span className="text-blue-400 font-bold text-xs tracking-wide uppercase">查詢紀錄</span>
       <button
         onClick={onNewSession}
