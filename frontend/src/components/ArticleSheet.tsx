@@ -54,7 +54,7 @@ export default function ArticleSheet({ article, onClose }: Props) {
     <div className="md:hidden">
       {/* Backdrop */}
       {article && (
-        <div className="fixed inset-0 z-40 bg-black/50" onClick={onClose} />
+        <div className="fixed inset-0 z-50 bg-black/50" onClick={onClose} />
       )}
       {/* Sheet — always in DOM, slides in/out */}
       <div
