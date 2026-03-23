@@ -96,10 +96,11 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
                   <span className="text-slate-500 text-xs">參考法條：</span>
                   {msg.cited_articles.map((c) => (
                     <span
-                      key={c.article_number}
+                      key={`${c.law_id}-${c.article_number}`}
                       className="bg-blue-950 border border-blue-700 text-blue-300 px-2 py-1 rounded-full text-xs"
+                      title={c.law_name}
                     >
-                      §{c.article_number}
+                      {c.law_name} §{c.article_number}
                     </span>
                   ))}
                   <span className="text-slate-600 text-xs border border-slate-700 px-2 py-1 rounded-full">

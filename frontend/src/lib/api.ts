@@ -39,8 +39,11 @@ export async function getSessionHistory(sessionId: string): Promise<QueryHistory
   return res.json();
 }
 
-export async function getArticle(articleNumber: string): Promise<LawArticle> {
-  const res = await fetch(`${API_BASE}/api/articles/${articleNumber}`);
+export async function getArticle(articleNumber: string, lawId?: string): Promise<LawArticle> {
+  const url = lawId
+    ? `${API_BASE}/api/articles/${articleNumber}?law_id=${lawId}`
+    : `${API_BASE}/api/articles/${articleNumber}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error("Article not found");
   return res.json();
 }

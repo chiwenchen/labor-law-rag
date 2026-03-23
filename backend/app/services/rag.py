@@ -12,9 +12,9 @@ def get_embedder():
     from app.services.embedder import get_embedder as _get_embedder
     return _get_embedder()
 
-SIMILARITY_REJECT_THRESHOLD = 0.5
-SIMILARITY_WARN_THRESHOLD = 0.75
-TOP_K = 5
+SIMILARITY_REJECT_THRESHOLD = 0.45
+SIMILARITY_WARN_THRESHOLD = 0.72
+TOP_K = 8
 MAX_TOKENS = 1024
 
 SYSTEM_PROMPT = """你是一位專業的台灣勞動法規助理，服務對象為企業 HR。

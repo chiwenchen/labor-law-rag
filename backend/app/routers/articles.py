@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.db.database import get_db
@@ -10,11 +11,17 @@ router = APIRouter()
 
 
 @router.get("/articles/{article_number}")
-async def get_article(article_number: str, db: AsyncSession = Depends(get_db)):
+async def get_article(
+    article_number: str,
+    law_id: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
     stmt = select(LawArticle).where(
         LawArticle.article_number == article_number,
         LawArticle.is_active == True,
     )
+    if law_id:
+        stmt = stmt.where(LawArticle.law_id == law_id)
     article = (await db.execute(stmt)).scalar_one_or_none()
     if not article:
         raise HTTPException(status_code=404, detail="法條不存在")
@@ -24,6 +31,8 @@ async def get_article(article_number: str, db: AsyncSession = Depends(get_db)):
         "content": article.content,
         "last_updated": article.last_updated,
         "version": article.version,
+        "law_id": article.law_id,
+        "law_name": article.law_name,
     }
 
 

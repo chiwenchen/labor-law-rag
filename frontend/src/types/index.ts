@@ -34,6 +34,8 @@ export interface LawArticle {
   content: string;
   last_updated: string | null;
   version: string | null;
+  law_id: string;
+  law_name: string;
 }
 
 export interface LawStatus {

@@ -13,7 +13,7 @@ export default function ArticlePanel({ citedArticles }: Props) {
 
   useEffect(() => {
     if (citedArticles.length === 0) return;
-    Promise.all(citedArticles.map((c) => getArticle(c.article_number)))
+    Promise.all(citedArticles.map((c) => getArticle(c.article_number, c.law_id)))
       .then(setArticles)
       .catch(console.error);
     setCollapsed(new Set(citedArticles.slice(1).map((c) => c.article_number)));
@@ -49,7 +49,7 @@ export default function ArticlePanel({ citedArticles }: Props) {
               }
             >
               <div className="text-green-400 font-bold text-xs mb-1">
-                第 {article.article_number} 條{article.title ? `（${article.title}）` : ""}
+                {article.law_name} 第 {article.article_number} 條{article.title ? `（${article.title}）` : ""}
               </div>
               <div className="text-slate-500 text-[10px]">{isCollapsed ? "展開原文 ▼" : "收合 ▲"}</div>
             </button>
