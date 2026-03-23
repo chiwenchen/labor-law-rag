@@ -43,12 +43,12 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 flex flex-col p-3 gap-3 shrink-0 transition-transform duration-300 relative md:relative md:translate-x-0 md:w-56 md:z-auto ${
+      className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 flex flex-col p-3 gap-3 shrink-0 transition-transform duration-300 relative md:relative md:inset-auto md:translate-x-0 md:w-56 md:z-auto ${
         mobileOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
       <button
-        onClick={onMobileClose}
+        onClick={() => onMobileClose?.()}
         className="md:hidden absolute top-3 right-3 text-slate-500 hover:text-slate-300 text-lg leading-none p-1"
         aria-label="關閉選單"
       >
