@@ -13,6 +13,7 @@ export default function Home() {
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [selectedLawIds, setSelectedLawIds] = useState<string[]>([]); // [] = all laws
   const [selectedArticle, setSelectedArticle] = useState<CitedArticle | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const handleSelectSession = useCallback(async (sessionId: string) => {
     const { getSessionHistory } = await import("@/lib/api");
@@ -51,6 +52,12 @@ export default function Home() {
 
   return (
     <main className="flex h-screen bg-slate-800 text-white overflow-hidden">
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
       <Sidebar
         activeSessionId={activeSessionId}
         onSelectSession={handleSelectSession}
@@ -59,6 +66,8 @@ export default function Home() {
         selectedLawIds={selectedLawIds}
         onLawScopeChange={setSelectedLawIds}
         showLawScope={true}
+        mobileOpen={drawerOpen}
+        onMobileClose={() => setDrawerOpen(false)}
       />
       <ChatPanel
         sessionId={activeSessionId}
@@ -66,7 +75,7 @@ export default function Home() {
         onNewMessage={handleNewMessage}
         onArticlesChange={setCitedArticles}
         selectedLawIds={selectedLawIds}
-        onOpenDrawer={() => {}} // Mobile drawer toggle (reserved for future sidebar state)
+        onOpenDrawer={() => setDrawerOpen(true)}
         onArticleSelect={setSelectedArticle}
       />
       <ArticlePanel citedArticles={citedArticles} />
