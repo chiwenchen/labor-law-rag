@@ -43,7 +43,7 @@ export default function Sidebar({
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 flex flex-col p-3 gap-3 shrink-0 transition-transform duration-300 relative md:relative md:inset-auto md:translate-x-0 md:w-56 md:z-auto ${
+      className={`fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 flex flex-col p-3 gap-3 shrink-0 transition-transform duration-300 md:relative md:inset-auto md:translate-x-0 md:w-56 md:z-auto ${
         mobileOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
