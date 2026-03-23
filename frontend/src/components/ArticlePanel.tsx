@@ -21,14 +21,14 @@ export default function ArticlePanel({ citedArticles }: Props) {
 
   if (articles.length === 0) {
     return (
-      <aside className="w-60 bg-slate-900 p-3 text-xs text-slate-600 flex items-center justify-center shrink-0">
+      <aside className="hidden md:flex w-60 bg-slate-900 p-3 text-xs text-slate-600 items-center justify-center shrink-0">
         引用法條將顯示於此
       </aside>
     );
   }
 
   return (
-    <aside className="w-60 bg-slate-900 flex flex-col p-3 gap-2 overflow-y-auto shrink-0">
+    <aside className="hidden md:flex w-60 bg-slate-900 flex-col p-3 gap-2 overflow-y-auto shrink-0">
       <span className="text-blue-400 font-bold text-xs tracking-wide uppercase">法條原文</span>
       {articles.map((article) => {
         const isCollapsed = collapsed.has(article.article_number);
