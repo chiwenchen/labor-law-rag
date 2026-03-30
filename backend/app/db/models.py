@@ -10,12 +10,22 @@ class Base(DeclarativeBase):
     pass
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email = Column(Text, unique=True, nullable=False)
+    role = Column(String(20), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class Session(Base):
     __tablename__ = "sessions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = Column(String(100), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
 
 class LawArticle(Base):
