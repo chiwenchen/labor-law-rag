@@ -17,10 +17,21 @@ SIMILARITY_WARN_THRESHOLD = 0.72
 TOP_K = 8
 MAX_TOKENS = 1024
 
-SYSTEM_PROMPT = """你是一位專業的台灣勞動法規助理，服務對象為企業 HR。
+_SYSTEM_PROMPT_HR = """你是一位專業的台灣勞動法規助理，服務對象為企業 HR。
+請從公司管理合規的角度回答，包含：雇主義務、違規罰則、內部流程建議、勞資爭議處理方式。
 請只根據以下提供的法條內容回答問題，不得自行推論或引用條文以外的資訊。
 如果提供的法條不足以回答問題，請明確說明「現行法條無明確規定，建議諮詢勞工局」。
 回答請使用繁體中文，語氣專業清晰。"""
+
+_SYSTEM_PROMPT_EMPLOYEE = """你是一位專業的台灣勞動法規助理，服務對象為勞工員工。
+請從勞工權益保障的角度回答，包含：個人權利、申請方式、如何向公司主張、必要時的申訴管道。
+請只根據以下提供的法條內容回答問題，不得自行推論或引用條文以外的資訊。
+如果提供的法條不足以回答問題，請明確說明「現行法條無明確規定，建議諮詢勞工局」。
+回答請使用繁體中文，語氣專業清晰。"""
+
+
+def _get_system_prompt(role: str) -> str:
+    return _SYSTEM_PROMPT_EMPLOYEE if role == "employee" else _SYSTEM_PROMPT_HR
 
 
 @dataclass
@@ -69,7 +80,7 @@ async def _search_articles(
     return rows
 
 
-def _call_claude(question: str, articles: list) -> str:
+def _call_claude(question: str, articles: list, role: str = "hr") -> str:
     context = "\n\n".join(
         f"【{row.law_name}第{row.article_number}條】\n{row.content}" for row in articles
     )
@@ -78,7 +89,7 @@ def _call_claude(question: str, articles: list) -> str:
         response = client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
+            system=_get_system_prompt(role),
             messages=[
                 {"role": "user", "content": f"相關法條：\n{context}\n\n問題：{question}"}
             ],
@@ -92,6 +103,7 @@ async def query_law(
     question: str,
     db: AsyncSession,
     law_ids: list[str] | None = None,
+    role: str = "hr",
 ) -> QueryResult:
     embedder = get_embedder()
     question_embedding = embedder.get_text_embedding(question)
@@ -109,7 +121,7 @@ async def query_law(
     if articles[0].similarity < SIMILARITY_WARN_THRESHOLD:
         warning = "相關性較低，建議查閱原文確認或諮詢專業人士。"
 
-    answer = _call_claude(question, articles)
+    answer = _call_claude(question, articles, role=role)
 
     cited = [
         {

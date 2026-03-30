@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.auth.dependencies import get_current_user
+from app.auth.store import SessionData
 from app.db.database import get_db
 from app.db.models import Session, QueryHistory
 from app.services.rag import query_law
@@ -20,7 +22,11 @@ class QueryRequest(BaseModel):
 
 
 @router.post("/query")
-async def handle_query(request: QueryRequest, db: AsyncSession = Depends(get_db)):
+async def handle_query(
+    request: QueryRequest,
+    db: AsyncSession = Depends(get_db),
+    user: SessionData = Depends(get_current_user),
+):
     if len(request.question) > 500:
         raise HTTPException(status_code=400, detail="問題長度不得超過 500 字")
 
@@ -45,7 +51,7 @@ async def handle_query(request: QueryRequest, db: AsyncSession = Depends(get_db)
             raise HTTPException(status_code=404, detail="Session not found")
     else:
         title = request.question[:20]
-        session = Session(title=title)
+        session = Session(title=title, user_id=user.user_id)
         db.add(session)
         await db.flush()
         session_id = session.id
@@ -54,6 +60,7 @@ async def handle_query(request: QueryRequest, db: AsyncSession = Depends(get_db)
         request.question,
         db,
         law_ids=safe_law_ids if safe_law_ids else None,
+        role=user.role,
     )
 
     history = QueryHistory(
