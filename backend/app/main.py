@@ -3,7 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import query, sessions, articles, laws
+from app.routers import query, sessions, articles, laws, auth
 
 logger = logging.getLogger(__name__)
 
@@ -64,14 +64,18 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="勞動法規 RAG API", lifespan=lifespan)
 
+from app.config import settings
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[settings.frontend_url, "http://localhost:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 app.include_router(query.router, prefix="/api")
 app.include_router(sessions.router, prefix="/api")
 app.include_router(articles.router, prefix="/api")
 app.include_router(laws.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
