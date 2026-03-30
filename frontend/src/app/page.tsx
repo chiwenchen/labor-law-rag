@@ -1,19 +1,25 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import ChatPanel from "@/components/ChatPanel";
 import ArticlePanel from "@/components/ArticlePanel";
 import ArticleSheet from "@/components/ArticleSheet";
-import { ChatMessage, CitedArticle, QueryHistoryItem } from "@/types";
+import { getUser } from "@/lib/auth";
+import { ChatMessage, CitedArticle, QueryHistoryItem, User } from "@/types";
 
 export default function Home() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [citedArticles, setCitedArticles] = useState<CitedArticle[]>([]);
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [selectedLawIds, setSelectedLawIds] = useState<string[]>([]); // [] = all laws
   const [selectedArticle, setSelectedArticle] = useState<CitedArticle | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    getUser().then(setUser).catch(console.error);
+  }, []);
 
   const handleSelectSession = useCallback(async (sessionId: string) => {
     const { getSessionHistory } = await import("@/lib/api");
@@ -68,6 +74,7 @@ export default function Home() {
         showLawScope={true}
         mobileOpen={drawerOpen}
         onMobileClose={() => setDrawerOpen(false)}
+        user={user}
       />
       <ChatPanel
         sessionId={activeSessionId}

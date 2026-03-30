@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getSessions, getLawStatus } from "@/lib/api";
-import { SessionSummary, LawStatus } from "@/types";
+import { logout } from "@/lib/auth";
+import { SessionSummary, LawStatus, User } from "@/types";
 import LawScopeSelector from "@/components/LawScopeSelector";
 
 interface Props {
@@ -13,9 +14,10 @@ interface Props {
   refreshKey?: number;
   selectedLawIds: string[];
   onLawScopeChange: (ids: string[]) => void;
-  showLawScope?: boolean; // false on /laws page
+  showLawScope?: boolean;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  user?: User | null;
 }
 
 export default function Sidebar({
@@ -28,6 +30,7 @@ export default function Sidebar({
   showLawScope = true,
   mobileOpen = false,
   onMobileClose,
+  user,
 }: Props) {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [status, setStatus] = useState<LawStatus | null>(null);
@@ -114,6 +117,31 @@ export default function Sidebar({
       >
         📋 法規管理
       </Link>
+
+      {/* User info + logout */}
+      {user && (
+        <div className="border-t border-slate-700 pt-2 mt-1">
+          <div className="text-slate-400 text-xs truncate">{user.email}</div>
+          <div className="flex items-center justify-between mt-1">
+            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+              user.role === "hr"
+                ? "bg-purple-900 text-purple-300"
+                : "bg-blue-900 text-blue-300"
+            }`}>
+              {user.role === "hr" ? "人資" : "員工"}
+            </span>
+            <button
+              onClick={async () => {
+                await logout();
+                window.location.href = "/login";
+              }}
+              className="text-[10px] text-red-500 hover:text-red-400 transition-colors"
+            >
+              登出
+            </button>
+          </div>
+        </div>
+      )}
     </aside>
   );
 }
