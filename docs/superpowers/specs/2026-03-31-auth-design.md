@@ -115,6 +115,23 @@ backend/app/
 └── config.py                    # 修改 — 加入 RESEND_API_KEY, EMAIL_FROM, FRONTEND_URL
 ```
 
+### Email 正規化
+
+為防止利用 Gmail plus-addressing（`abc+1@gmail.com`、`abc+2@gmail.com`）或 dot-trick（`a.b.c@gmail.com`）繞過帳號唯一性限制，所有 email 在存入 `otp_store`、查詢 DB、INSERT 前須先正規化：
+
+```python
+def _normalize_email(email: str) -> str:
+    local, _, domain = email.lower().partition("@")
+    if domain in {"gmail.com", "googlemail.com"}:
+        local = local.split("+")[0]   # 去掉 +tag
+        local = local.replace(".", "") # 忽略 dots
+    else:
+        local = local.split("+")[0]   # 其他 provider 只去 +tag
+    return f"{local}@{domain}"
+```
+
+正規化適用範圍：`otp/send`、`otp/verify`、`register`（pending_store 存的 email 也是正規化後的值）。
+
 ### API Endpoints（routers/auth.py）
 
 | Method | Path | 說明 |
