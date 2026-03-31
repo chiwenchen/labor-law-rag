@@ -26,6 +26,7 @@ export async function postQuery(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    credentials: "include",
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -72,13 +73,17 @@ export async function* streamQuery(
 }
 
 export async function getSessions(): Promise<SessionSummary[]> {
-  const res = await fetch(`${API_BASE}/api/sessions`);
+  const res = await fetch(`${API_BASE}/api/sessions`, {
+    credentials: "include",
+  });
   if (!res.ok) throw new Error("Failed to fetch sessions");
   return res.json();
 }
 
 export async function getSessionHistory(sessionId: string): Promise<QueryHistoryItem[]> {
-  const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/history`);
+  const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/history`, {
+    credentials: "include",
+  });
   if (!res.ok) throw new Error("Failed to fetch history");
   return res.json();
 }
@@ -87,19 +92,23 @@ export async function getArticle(articleNumber: string, lawId?: string): Promise
   const url = lawId
     ? `${API_BASE}/api/articles/${articleNumber}?law_id=${lawId}`
     : `${API_BASE}/api/articles/${articleNumber}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error("Article not found");
   return res.json();
 }
 
 export async function getLawStatus(): Promise<LawStatus> {
-  const res = await fetch(`${API_BASE}/api/law/status`);
+  const res = await fetch(`${API_BASE}/api/law/status`, {
+    credentials: "include",
+  });
   if (!res.ok) throw new Error("Failed to fetch law status");
   return res.json();
 }
 
 export async function getLaws(): Promise<SupportedLaw[]> {
-  const res = await fetch(`${API_BASE}/api/laws`);
+  const res = await fetch(`${API_BASE}/api/laws`, {
+    credentials: "include",
+  });
   if (!res.ok) throw new Error("Failed to fetch laws");
   return res.json();
 }
@@ -109,6 +118,7 @@ export async function updateLaw(
 ): Promise<{ status: string; article_count: number; message: string }> {
   const res = await fetch(`${API_BASE}/api/laws/${lawId}/update`, {
     method: "POST",
+    credentials: "include",
     signal: AbortSignal.timeout(180_000),
   });
   if (!res.ok) throw new Error(await res.text());

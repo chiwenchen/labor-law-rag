@@ -22,10 +22,22 @@ SIMILARITY_REJECT_THRESHOLD = 0.45
 SIMILARITY_WARN_THRESHOLD = 0.72
 TOP_K = 10
 
-SYSTEM_PROMPT = """你是一位專業的台灣勞動法規助理，服務對象為企業 HR。
+_SYSTEM_PROMPT_HR = """你是一位專業的台灣勞動法規助理，服務對象為企業 HR。
+請從公司管理合規的角度回答，包含：雇主義務、違規罰則、內部流程建議、勞資爭議處理方式。
 請只根據以下提供的法條內容回答問題，不得自行推論或引用條文以外的資訊。
 如果提供的法條不足以回答問題，請明確說明「現行法條無明確規定，建議諮詢勞工局」。
 回答請使用繁體中文，語氣專業清晰。"""
+
+_SYSTEM_PROMPT_EMPLOYEE = """你是一位專業的台灣勞動法規助理，服務對象為勞工員工。
+請從勞工權益保障的角度回答，包含：個人權利、申請方式、如何向公司主張、必要時的申訴管道。
+請只根據以下提供的法條內容回答問題，不得自行推論或引用條文以外的資訊。
+如果提供的法條不足以回答問題，請明確說明「現行法條無明確規定，建議諮詢勞工局」。
+回答請使用繁體中文，語氣專業清晰。"""
+
+
+def _get_system_prompt(role: str) -> str:
+    return _SYSTEM_PROMPT_EMPLOYEE if role == "employee" else _SYSTEM_PROMPT_HR
+
 
 HYDE_PROMPT = """你是台灣勞動法規專家。
 以下是一個勞工提出的問題，請用「法條條文的語氣與格式」，寫出最可能回答這個問題的相關法條內容。
@@ -196,7 +208,7 @@ def _build_claude_messages(question: str, context: str, history: list[dict]) -> 
     return [{"role": "user", "content": user_content}]
 
 
-async def _call_claude(question: str, articles: list, history: list[dict] | None = None) -> str:
+async def _call_claude(question: str, articles: list, history: list[dict] | None = None, role: str = "hr") -> str:
     context = "\n\n".join(
         f"【{row.law_name}第{row.article_number}條】\n{row.content}" for row in articles
     )
@@ -205,7 +217,7 @@ async def _call_claude(question: str, articles: list, history: list[dict] | None
         response = await client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2048,
-            system=SYSTEM_PROMPT,
+            system=_get_system_prompt(role),
             messages=_build_claude_messages(question, context, history or []),
         )
         return response.content[0].text
@@ -218,6 +230,7 @@ async def query_law(
     db: AsyncSession,
     law_ids: list[str] | None = None,
     history: list[dict] | None = None,
+    role: str = "hr",
 ) -> QueryResult:
     embedder = get_embedder()
 
@@ -249,7 +262,7 @@ async def query_law(
     if articles[0].similarity < SIMILARITY_WARN_THRESHOLD:
         warning = "相關性較低，建議查閱原文確認或諮詢專業人士。"
 
-    answer = await _call_claude(question, articles, history=history)
+    answer = await _call_claude(question, articles, history=history, role=role)
 
     cited = [
         {
@@ -275,6 +288,7 @@ async def stream_query_law(
     db: AsyncSession,
     law_ids: list[str] | None = None,
     history: list[dict] | None = None,
+    role: str = "hr",
 ) -> AsyncIterator[dict]:
     """Retrieves articles then streams Claude's answer token-by-token."""
     embedder = get_embedder()
@@ -331,7 +345,7 @@ async def stream_query_law(
         async with client.messages.stream(
             model="claude-sonnet-4-6",
             max_tokens=2048,
-            system=SYSTEM_PROMPT,
+            system=_get_system_prompt(role),
             messages=_build_claude_messages(question, context, history or []),
         ) as stream:
             async for text_chunk in stream.text_stream:

@@ -7,11 +7,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.auth.dependencies import get_current_user
+from app.auth.store import SessionData
 from app.db.database import get_db, AsyncSessionLocal
 from app.db.models import Session, QueryHistory
 from app.services.rag import query_law, stream_query_law
 from app.services.law_registry import VALID_LAW_IDS
-from app.main import limiter
+from app.limiter import limiter
 
 router = APIRouter()
 
@@ -30,7 +32,12 @@ class QueryRequest(BaseModel):
 
 @router.post("/query")
 @limiter.limit("10/minute")
-async def handle_query(request: Request, body: QueryRequest, db: AsyncSession = Depends(get_db)):
+async def handle_query(
+    request: Request,
+    body: QueryRequest,
+    db: AsyncSession = Depends(get_db),
+    user: SessionData = Depends(get_current_user),
+):
     if len(body.question) > 500:
         raise HTTPException(status_code=400, detail="問題長度不得超過 500 字")
 
@@ -55,7 +62,7 @@ async def handle_query(request: Request, body: QueryRequest, db: AsyncSession = 
             raise HTTPException(status_code=404, detail="Session not found")
     else:
         title = body.question[:20]
-        session = Session(title=title)
+        session = Session(title=title, user_id=user.user_id)
         db.add(session)
         await db.flush()
         session_id = session.id
@@ -70,6 +77,7 @@ async def handle_query(request: Request, body: QueryRequest, db: AsyncSession = 
         db,
         law_ids=safe_law_ids if safe_law_ids else None,
         history=conv_history,
+        role=user.role,
     )
 
     history = QueryHistory(
@@ -95,7 +103,12 @@ async def handle_query(request: Request, body: QueryRequest, db: AsyncSession = 
 
 @router.post("/query/stream")
 @limiter.limit("10/minute")
-async def handle_query_stream(request: Request, body: QueryRequest, db: AsyncSession = Depends(get_db)):
+async def handle_query_stream(
+    request: Request,
+    body: QueryRequest,
+    db: AsyncSession = Depends(get_db),
+    user: SessionData = Depends(get_current_user),
+):
     if len(body.question) > 500:
         raise HTTPException(status_code=400, detail="問題長度不得超過 500 字")
 
@@ -119,7 +132,7 @@ async def handle_query_stream(request: Request, body: QueryRequest, db: AsyncSes
             raise HTTPException(status_code=404, detail="Session not found")
     else:
         title = body.question[:20]
-        session = Session(title=title)
+        session = Session(title=title, user_id=user.user_id)
         db.add(session)
         await db.flush()
         session_id = session.id
@@ -131,6 +144,7 @@ async def handle_query_stream(request: Request, body: QueryRequest, db: AsyncSes
         if body.history else None
     )
     question = body.question
+    user_role = user.role
 
     async def event_stream():
         # Use a fresh session independent of the request's get_db lifecycle
@@ -140,6 +154,7 @@ async def handle_query_stream(request: Request, body: QueryRequest, db: AsyncSes
                 fresh_db,
                 law_ids=law_ids_arg,
                 history=conv_history,
+                role=user_role,
             ):
                 if event["type"] in ("done", "out_of_scope"):
                     event["session_id"] = str(session_id)

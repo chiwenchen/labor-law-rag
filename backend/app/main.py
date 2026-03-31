@@ -4,12 +4,10 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from app.routers import query, sessions, articles, laws
-
-limiter = Limiter(key_func=get_remote_address)
+from app.limiter import limiter
+from app.routers import query, sessions, articles, laws, auth
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +70,8 @@ _ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "http://loca
 
 app = FastAPI(title="勞動法規 RAG API", lifespan=lifespan)
 
+from app.config import settings
+
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -79,7 +79,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type", "Accept"],
+    allow_headers=["Content-Type", "Accept", "Cookie"],
+    allow_credentials=True,
 )
 
 
@@ -95,3 +96,4 @@ app.include_router(query.router, prefix="/api")
 app.include_router(sessions.router, prefix="/api")
 app.include_router(articles.router, prefix="/api")
 app.include_router(laws.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")

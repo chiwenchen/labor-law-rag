@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     postgres_user: str = "laborlaw"
     postgres_password: str = "laborlaw"
     postgres_db: str = "laborlaw"
+    resend_api_key: str = ""
+    email_from: str = "onboarding@resend.dev"
+    frontend_url: str = "http://localhost:3000"
 
 
 settings = Settings()

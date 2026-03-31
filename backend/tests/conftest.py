@@ -1,5 +1,10 @@
+import os
 import pytest
 from unittest.mock import MagicMock
+
+# Provide required env vars so Settings() can be instantiated without a .env file
+os.environ.setdefault("ANTHROPIC_API_KEY", "test-key")
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
 
 
 @pytest.fixture

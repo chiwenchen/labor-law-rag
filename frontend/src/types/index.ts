@@ -67,3 +67,8 @@ export interface SupportedLaw {
   last_updated: string | null;
   last_status: "success" | "failed" | "never_run";
 }
+
+export interface User {
+  email: string;
+  role: "hr" | "employee";
+}
