@@ -3,8 +3,17 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient, ASGITransport
 from unittest.mock import patch, AsyncMock
+from uuid import uuid4
 from app.main import app
 from app.services.rag import QueryResult
+from app.auth.store import session_store, SessionData
+
+
+def _inject_session(client: AsyncClient) -> None:
+    """Pre-seed a valid session cookie on the async client."""
+    token = str(uuid4())
+    session_store[token] = SessionData(user_id=uuid4(), email="test@example.com", role="employee")
+    client.cookies.set("session", token)
 
 
 @pytest.mark.asyncio
@@ -27,6 +36,7 @@ async def test_query_endpoint_returns_answer():
 
     with patch("app.routers.query.query_law", return_value=mock_result):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            _inject_session(client)
             response = await client.post("/api/query", json={"question": "員工到職一年有幾天特休？"})
 
     app.dependency_overrides = {}
@@ -40,6 +50,7 @@ async def test_query_endpoint_returns_answer():
 @pytest.mark.asyncio
 async def test_query_endpoint_rejects_long_input():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        _inject_session(client)
         response = await client.post("/api/query", json={"question": "a" * 501})
     assert response.status_code == 400
 
@@ -59,6 +70,7 @@ async def test_query_endpoint_returns_out_of_scope():
 
     with patch("app.routers.query.query_law", return_value=mock_result):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            _inject_session(client)
             response = await client.post("/api/query", json={"question": "我想聊感情"})
 
     app.dependency_overrides = {}
