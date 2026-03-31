@@ -9,7 +9,9 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./backend/app/db/migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/app/db/migrations/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./backend/app/db/migrations/002_multi_law.sql:/docker-entrypoint-initdb.d/02_multi_law.sql
+      - ./backend/app/db/migrations/003_users.sql:/docker-entrypoint-initdb.d/03_users.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -31,8 +33,6 @@ services:
 
   frontend:
     build: ./frontend
-    environment:
-      BACKEND_URL: http://backend:8000
     ports:
       - "3000:3000"
     environment:

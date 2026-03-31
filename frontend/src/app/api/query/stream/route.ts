@@ -5,9 +5,10 @@ const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
 export async function POST(request: NextRequest) {
   const body = await request.text();
 
+  const cookie = request.headers.get("cookie") ?? "";
   const backendRes = await fetch(`${BACKEND_URL}/api/query/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Cookie: cookie },
     body,
   });
 

@@ -1,8 +1,7 @@
-from __future__ import annotations
 import json
 import uuid
 from typing import Literal, Optional
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -34,7 +33,7 @@ class QueryRequest(BaseModel):
 @limiter.limit("10/minute")
 async def handle_query(
     request: Request,
-    body: QueryRequest,
+    body: QueryRequest = Body(...),
     db: AsyncSession = Depends(get_db),
     user: SessionData = Depends(get_current_user),
 ):
@@ -105,7 +104,7 @@ async def handle_query(
 @limiter.limit("10/minute")
 async def handle_query_stream(
     request: Request,
-    body: QueryRequest,
+    body: QueryRequest = Body(...),
     db: AsyncSession = Depends(get_db),
     user: SessionData = Depends(get_current_user),
 ):

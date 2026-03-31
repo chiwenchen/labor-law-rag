@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, KeyboardEvent } from "react";
+import { useState, useRef, KeyboardEvent, ClipboardEvent } from "react";
 import { useRouter } from "next/navigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -107,6 +107,17 @@ export default function LoginPage() {
     if (e.key === "Enter" && otp.join("").length === 6) handleVerifyOtp();
   }
 
+  function handleOtpPaste(e: ClipboardEvent<HTMLInputElement>) {
+    e.preventDefault();
+    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6).split("");
+    if (digits.length === 0) return;
+    const next = [...otp];
+    digits.forEach((d, i) => { next[i] = d; });
+    setOtp(next);
+    const focusIndex = Math.min(digits.length, 5);
+    otpRefs.current[focusIndex]?.focus();
+  }
+
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="bg-slate-800 rounded-xl p-8 w-full max-w-sm shadow-xl border border-slate-700">
@@ -158,6 +169,7 @@ export default function LoginPage() {
                   value={digit}
                   onChange={(e) => handleOtpInput(i, e.target.value)}
                   onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                  onPaste={handleOtpPaste}
                   className="w-10 h-12 bg-slate-900 border border-slate-600 rounded-lg text-center text-white text-lg font-mono focus:outline-none focus:border-blue-500"
                 />
               ))}
