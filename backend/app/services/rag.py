@@ -104,11 +104,16 @@ async def _rewrite_question(question: str, history: list[dict]) -> str:
 
 
 def _build_bm25_query(question: str) -> str:
-    """Convert question to a tsquery-compatible string."""
-    # Remove punctuation, split to tokens, join with OR operator
-    tokens = re.sub(r"[？！。，、；：「」『』【】\s]+", " ", question).split()
-    # Filter empty tokens
-    tokens = [t for t in tokens if t]
+    """Convert question to a tsquery-compatible string.
+
+    to_tsquery('simple', ...) rejects tokens containing ( ) & | ! :
+    so we strip those characters before building the query.
+    """
+    # Remove CJK punctuation and whitespace
+    cleaned = re.sub(r"[？！。，、；：「」『』【】\s]+", " ", question)
+    # Strip characters that would break to_tsquery syntax
+    cleaned = re.sub(r"[()&|!:']", "", cleaned)
+    tokens = [t for t in cleaned.split() if t]
     if not tokens:
         return ""
     return " | ".join(tokens)

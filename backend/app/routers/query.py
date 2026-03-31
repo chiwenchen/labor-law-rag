@@ -53,9 +53,12 @@ async def handle_query(
             session_id = uuid.UUID(body.session_id)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid session_id format")
-        # Validate session exists
+        # Validate session exists and belongs to current user
         existing_session = (await db.execute(
-            select(Session).where(Session.id == session_id)
+            select(Session).where(
+                Session.id == session_id,
+                Session.user_id == user.user_id,
+            )
         )).scalar_one_or_none()
         if existing_session is None:
             raise HTTPException(status_code=404, detail="Session not found")
@@ -125,7 +128,10 @@ async def handle_query_stream(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid session_id format")
         existing_session = (await db.execute(
-            select(Session).where(Session.id == session_id)
+            select(Session).where(
+                Session.id == session_id,
+                Session.user_id == user.user_id,
+            )
         )).scalar_one_or_none()
         if existing_session is None:
             raise HTTPException(status_code=404, detail="Session not found")
