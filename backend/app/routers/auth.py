@@ -1,13 +1,11 @@
-from __future__ import annotations
-
 import logging
 import secrets
 import string
 from datetime import datetime, timedelta, timezone
-from typing import Literal
+from typing import Literal, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,7 +60,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
     )
 
 
-async def get_user_by_email(email: str, db: AsyncSession) -> User | None:
+async def get_user_by_email(email: str, db: AsyncSession) -> Optional[User]:
     return (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
 
 
@@ -86,7 +84,7 @@ class RegisterRequest(BaseModel):
 
 @router.post("/otp/send")
 @limiter.limit("5/minute")
-async def send_otp(request: Request, body: SendOtpRequest):
+async def send_otp(request: Request, body: SendOtpRequest = Body(...)):
     normalized = _normalize_email(body.email)
     otp = _generate_otp()
     otp_store[normalized] = OtpEntry(
