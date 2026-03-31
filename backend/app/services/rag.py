@@ -16,13 +16,26 @@ _MAX_RETRIES = 3
 _RETRY_DELAY = 2.0  # seconds, doubles each attempt
 
 
+def _is_overloaded(e: APIStatusError) -> bool:
+    """True for overloaded errors — SDK v0.28 maps 529 to InternalServerError (>=500)."""
+    if e.status_code == 529:
+        return True
+    body = getattr(e, "body", None)
+    if isinstance(body, dict):
+        err = body.get("error", {})
+        return err.get("type") == "overloaded_error"
+    if isinstance(body, str) and "overloaded_error" in body:
+        return True
+    return False
+
+
 async def _call_claude_with_retry(coro_factory, label: str = "Claude"):
     """Call an async factory that returns a coroutine/context, retrying on overload."""
     for attempt in range(_MAX_RETRIES):
         try:
             return await coro_factory()
         except APIStatusError as e:
-            if e.status_code == 529 and attempt < _MAX_RETRIES - 1:
+            if _is_overloaded(e) and attempt < _MAX_RETRIES - 1:
                 wait = _RETRY_DELAY * (2 ** attempt)
                 logger.warning(f"{label} overloaded (attempt {attempt + 1}), retrying in {wait}s")
                 await asyncio.sleep(wait)
@@ -387,7 +400,7 @@ async def stream_query_law(
             break  # success
         except APIStatusError as e:
             last_error = e
-            if e.status_code == 529 and attempt < _MAX_RETRIES - 1:
+            if _is_overloaded(e) and attempt < _MAX_RETRIES - 1:
                 wait = _RETRY_DELAY * (2 ** attempt)
                 logger.warning(f"Claude stream overloaded (attempt {attempt + 1}), retrying in {wait}s")
                 await asyncio.sleep(wait)

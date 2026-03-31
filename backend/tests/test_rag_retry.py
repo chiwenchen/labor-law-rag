@@ -1,27 +1,58 @@
 """
 Regression tests for Claude API overload retry logic.
 
-Root cause: Anthropic returns 529 overloaded_error under load.
+Root cause: Anthropic SDK v0.28 maps HTTP 529 to InternalServerError (status >= 500).
+_is_overloaded() detects it via body.error.type == "overloaded_error".
 Without retry, the query fails immediately with "發生錯誤，請稍後再試".
-Fix: exponential backoff retry up to _MAX_RETRIES on APIStatusError(529).
+Fix: exponential backoff retry up to _MAX_RETRIES on overloaded APIStatusError.
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, call
 from anthropic import APIStatusError
 
-from app.services.rag import _call_claude_with_retry, stream_query_law, _MAX_RETRIES
+from app.services.rag import _call_claude_with_retry, stream_query_law, _MAX_RETRIES, _is_overloaded
 
 
 def _make_overload_error():
-    """Build an APIStatusError that mimics the 529 overloaded_error response."""
+    """Build an APIStatusError mimicking the real SDK v0.28 InternalServerError for 529.
+    SDK maps status >= 500 to InternalServerError; body contains overloaded_error type.
+    """
     mock_response = MagicMock()
     mock_response.status_code = 529
     mock_response.headers = {}
     return APIStatusError(
-        message="Overloaded",
+        message="Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}}",
         response=mock_response,
         body={"type": "error", "error": {"type": "overloaded_error", "message": "Overloaded"}},
     )
+
+
+# ---------------------------------------------------------------------------
+# _is_overloaded unit tests
+# ---------------------------------------------------------------------------
+
+def test_is_overloaded_detects_body_dict():
+    mock_response = MagicMock()
+    mock_response.status_code = 529
+    mock_response.headers = {}
+    e = APIStatusError(
+        message="Error 529",
+        response=mock_response,
+        body={"type": "error", "error": {"type": "overloaded_error", "message": "Overloaded"}},
+    )
+    assert _is_overloaded(e) is True
+
+
+def test_is_overloaded_false_for_other_500():
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+    mock_response.headers = {}
+    e = APIStatusError(
+        message="Internal Server Error",
+        response=mock_response,
+        body={"type": "error", "error": {"type": "api_error", "message": "Internal"}},
+    )
+    assert _is_overloaded(e) is False
 
 
 # ---------------------------------------------------------------------------
@@ -58,15 +89,15 @@ async def test_retry_exhausted_raises():
 
 
 @pytest.mark.asyncio
-async def test_non_529_error_not_retried():
-    """A 500 error should NOT be retried — fail immediately."""
+async def test_non_overloaded_500_not_retried():
+    """A generic 500 (not overloaded_error) should NOT be retried — fail immediately."""
     mock_response = MagicMock()
     mock_response.status_code = 500
     mock_response.headers = {}
     error_500 = APIStatusError(
         message="Internal Server Error",
         response=mock_response,
-        body={},
+        body={"type": "error", "error": {"type": "api_error", "message": "Internal"}},
     )
     attempts = []
 
