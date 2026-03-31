@@ -1,7 +1,15 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from unittest.mock import AsyncMock, patch, MagicMock
+from uuid import uuid4
 from app.main import app
+from app.auth.store import session_store, SessionData
+
+
+def _inject_hr_session(client: AsyncClient) -> None:
+    token = str(uuid4())
+    session_store[token] = SessionData(user_id=uuid4(), email="hr@test.com", role="hr")
+    client.cookies.set("session", token)
 
 
 @pytest.mark.asyncio
@@ -47,6 +55,7 @@ async def test_update_law_invalid_id_returns_404():
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
+        _inject_hr_session(client)
         response = await client.post("/api/laws/INVALID_CODE/update")
     assert response.status_code == 404
 
@@ -90,6 +99,7 @@ async def test_update_law_valid_id_returns_success():
             async with AsyncClient(
                 transport=ASGITransport(app=app), base_url="http://test"
             ) as client:
+                _inject_hr_session(client)
                 response = await client.post("/api/laws/N0030001/update")
     finally:
         app.dependency_overrides.clear()
@@ -130,6 +140,7 @@ async def test_update_law_fetch_failure_returns_502():
             async with AsyncClient(
                 transport=ASGITransport(app=app), base_url="http://test"
             ) as client:
+                _inject_hr_session(client)
                 response = await client.post("/api/laws/N0030001/update")
     finally:
         app.dependency_overrides.clear()

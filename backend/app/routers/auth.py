@@ -1,13 +1,11 @@
-from __future__ import annotations
-
 import logging
-import random
+import secrets
 import string
 from datetime import datetime, timedelta, timezone
-from typing import Literal
+from typing import Literal, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +20,7 @@ from app.auth.store import (
 )
 from app.db.database import get_db
 from app.db.models import User
+from app.limiter import limiter
 from app.services.email_service import send_otp_email
 
 logger = logging.getLogger(__name__)
@@ -46,7 +45,7 @@ def _normalize_email(email: str) -> str:
 
 
 def _generate_otp() -> str:
-    return "".join(random.choices(string.digits, k=6))
+    return "".join(secrets.choice(string.digits) for _ in range(6))
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -61,7 +60,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
     )
 
 
-async def get_user_by_email(email: str, db: AsyncSession) -> User | None:
+async def get_user_by_email(email: str, db: AsyncSession) -> Optional[User]:
     return (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
 
 
@@ -84,17 +83,18 @@ class RegisterRequest(BaseModel):
 # ---- Endpoints ----
 
 @router.post("/otp/send")
-async def send_otp(request: SendOtpRequest):
-    normalized = _normalize_email(request.email)
+@limiter.limit("5/minute")
+async def send_otp(request: Request, body: SendOtpRequest = Body(...)):
+    normalized = _normalize_email(body.email)
     otp = _generate_otp()
     otp_store[normalized] = OtpEntry(
         otp=otp,
         expires_at=datetime.now(timezone.utc) + timedelta(minutes=OTP_TTL_MINUTES),
     )
     try:
-        send_otp_email(request.email, otp)  # 寄信用原始 email，存儲用正規化後的
+        send_otp_email(body.email, otp)  # 寄信用原始 email，存儲用正規化後的
     except Exception as e:
-        logger.error(f"Failed to send OTP email to {request.email}: {e}")
+        logger.error(f"Failed to send OTP email to {body.email}: {e}")
         raise HTTPException(status_code=502, detail="無法寄送驗證碼，請稍後再試")
     return {"detail": "驗證碼已寄出"}
 

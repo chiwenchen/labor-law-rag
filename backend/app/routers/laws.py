@@ -8,6 +8,8 @@ from app.db.database import get_db
 from app.db.models import LawUpdateLog, SupportedLaw
 from app.services.law_registry import LAW_REGISTRY, get_law_by_id
 from app.main import limiter
+from app.auth.dependencies import get_current_user
+from app.auth.store import SessionData
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -37,12 +39,19 @@ async def list_laws(request: Request, db: AsyncSession = Depends(get_db)):
 
 @router.post("/laws/{law_id}/update")
 @limiter.limit("2/minute")
-async def update_law(law_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def update_law(
+    law_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: SessionData = Depends(get_current_user),
+):
     """Fetch and re-embed articles for one law.
 
     Synchronous long-poll: takes 30–120 seconds depending on article count.
     Frontend should use a 180-second timeout for this request.
     """
+    if user.role != "hr":
+        raise HTTPException(status_code=403, detail="僅 HR 可手動更新法規")
     law_info = get_law_by_id(law_id)
     if law_info is None:
         raise HTTPException(status_code=404, detail="Law not found in registry")
