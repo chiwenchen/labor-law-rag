@@ -9,8 +9,25 @@ logger = logging.getLogger(__name__)
 from typing import AsyncIterator, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from anthropic import AsyncAnthropic
+from anthropic import AsyncAnthropic, APIStatusError
 from app.config import settings
+
+_MAX_RETRIES = 3
+_RETRY_DELAY = 2.0  # seconds, doubles each attempt
+
+
+async def _call_claude_with_retry(coro_factory, label: str = "Claude"):
+    """Call an async factory that returns a coroutine/context, retrying on overload."""
+    for attempt in range(_MAX_RETRIES):
+        try:
+            return await coro_factory()
+        except APIStatusError as e:
+            if e.status_code == 529 and attempt < _MAX_RETRIES - 1:
+                wait = _RETRY_DELAY * (2 ** attempt)
+                logger.warning(f"{label} overloaded (attempt {attempt + 1}), retrying in {wait}s")
+                await asyncio.sleep(wait)
+            else:
+                raise
 
 
 def get_embedder():
@@ -218,14 +235,20 @@ async def _call_claude(question: str, articles: list, history: list[dict] | None
         f"【{row.law_name}第{row.article_number}條】\n{row.content}" for row in articles
     )
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
-    try:
+    messages = _build_claude_messages(question, context, history or [])
+    system = _get_system_prompt(role)
+
+    async def _do_call():
         response = await client.messages.create(
             model="claude-sonnet-4-6",
             max_tokens=2048,
-            system=_get_system_prompt(role),
-            messages=_build_claude_messages(question, context, history or []),
+            system=system,
+            messages=messages,
         )
         return response.content[0].text
+
+    try:
+        return await _call_claude_with_retry(_do_call, "Claude non-stream")
     except Exception as e:
         raise RuntimeError(f"Claude API call failed: {e}") from e
 
@@ -344,20 +367,39 @@ async def stream_query_law(
         f"【{row.law_name}第{row.article_number}條】\n{row.content}" for row in articles
     )
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+    messages = _build_claude_messages(question, context, history or [])
+    system = _get_system_prompt(role)
 
     full_answer = ""
-    try:
-        async with client.messages.stream(
-            model="claude-sonnet-4-6",
-            max_tokens=2048,
-            system=_get_system_prompt(role),
-            messages=_build_claude_messages(question, context, history or []),
-        ) as stream:
-            async for text_chunk in stream.text_stream:
-                full_answer += text_chunk
-                yield {"type": "token", "text": text_chunk}
-    except Exception as e:
-        logger.error(f"Streaming query failed: {e}")
+    last_error = None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            async with client.messages.stream(
+                model="claude-sonnet-4-6",
+                max_tokens=2048,
+                system=system,
+                messages=messages,
+            ) as stream:
+                async for text_chunk in stream.text_stream:
+                    full_answer += text_chunk
+                    yield {"type": "token", "text": text_chunk}
+            last_error = None
+            break  # success
+        except APIStatusError as e:
+            last_error = e
+            if e.status_code == 529 and attempt < _MAX_RETRIES - 1:
+                wait = _RETRY_DELAY * (2 ** attempt)
+                logger.warning(f"Claude stream overloaded (attempt {attempt + 1}), retrying in {wait}s")
+                await asyncio.sleep(wait)
+                full_answer = ""  # reset before retry
+            else:
+                break
+        except Exception as e:
+            last_error = e
+            break
+
+    if last_error is not None:
+        logger.error(f"Streaming query failed: {last_error}")
         yield {"type": "error", "message": "查詢過程中發生錯誤，請稍後再試"}
         return
 
