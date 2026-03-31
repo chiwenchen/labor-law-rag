@@ -5,18 +5,22 @@ import type {
   LawArticle,
   LawStatus,
   SupportedLaw,
+  StreamEvent,
 } from "@/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Empty string = relative path, so requests go to the same host (works with ngrok, docker, etc.)
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export async function postQuery(
   question: string,
   sessionId?: string,
   lawIds?: string[],
+  history?: Array<{ role: string; content: string }>,
 ): Promise<QueryResponse> {
   const body: Record<string, unknown> = { question };
   if (sessionId) body.session_id = sessionId;
   if (lawIds && lawIds.length > 0) body.law_ids = lawIds;
+  if (history && history.length > 0) body.history = history;
 
   const res = await fetch(`${API_BASE}/api/query`, {
     method: "POST",
@@ -25,6 +29,46 @@ export async function postQuery(
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+export async function* streamQuery(
+  question: string,
+  sessionId?: string,
+  lawIds?: string[],
+  history?: Array<{ role: string; content: string }>,
+): AsyncGenerator<StreamEvent> {
+  const body: Record<string, unknown> = { question };
+  if (sessionId) body.session_id = sessionId;
+  if (lawIds?.length) body.law_ids = lawIds;
+  if (history?.length) body.history = history;
+
+  const res = await fetch(`${API_BASE}/api/query/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (line.startsWith("data: ") && line.length > 6) {
+          yield JSON.parse(line.slice(6)) as StreamEvent;
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 export async function getSessions(): Promise<SessionSummary[]> {

@@ -1,8 +1,9 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { ChatMessage, CitedArticle } from "@/types";
-import { postQuery } from "@/lib/api";
+import { streamQuery } from "@/lib/api";
 
 interface Props {
   sessionId: string | null;
@@ -14,14 +15,35 @@ interface Props {
   onArticleSelect: (article: CitedArticle) => void;
 }
 
+interface Step {
+  step: string;
+  label: string;
+}
+
+const STEP_ICONS: Record<string, string> = {
+  rewrite: "💬",
+  hyde: "🔍",
+  search: "📚",
+  generate: "✍️",
+};
+
 export default function ChatPanel({ sessionId, messages, onNewMessage, onArticlesChange, selectedLawIds, onOpenDrawer, onArticleSelect }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingQuestion, setPendingQuestion] = useState<string | null>(null);
+  const [steps, setSteps] = useState<Step[]>([]);
+  const [streamingContent, setStreamingContent] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (streamingContent) {
+      bottomRef.current?.scrollIntoView({ behavior: "auto" });
+    }
+  }, [streamingContent]);
 
   async function handleSubmit() {
     const question = input.trim();
@@ -33,33 +55,74 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
 
     setInput("");
     setLoading(true);
+    setPendingQuestion(question);
+    setSteps([]);
+    setStreamingContent("");
 
     const userMsg: ChatMessage = { role: "user", content: question };
 
     try {
-      const data = await postQuery(
+      let finalAnswer = "";
+      let finalCitedArticles: CitedArticle[] = [];
+      let finalWarning: string | null = null;
+      let finalSessionId = sessionId ?? "";
+      let isOutOfScope = false;
+
+      const historyPayload = messages
+        .filter((m) => !m.is_out_of_scope)
+        .slice(-6)
+        .map((m) => ({ role: m.role, content: m.content }));
+
+      for await (const event of streamQuery(
         question,
         sessionId ?? undefined,
         selectedLawIds.length > 0 ? selectedLawIds : undefined,
-      );
+        historyPayload.length > 0 ? historyPayload : undefined,
+      )) {
+        if (event.type === "step") {
+          setSteps((prev) => [...prev, { step: event.step, label: event.label }]);
+        } else if (event.type === "token") {
+          setStreamingContent((prev) => prev + event.text);
+        } else if (event.type === "done") {
+          finalAnswer = event.answer;
+          finalCitedArticles = event.cited_articles;
+          finalWarning = event.warning;
+          finalSessionId = event.session_id;
+        } else if (event.type === "out_of_scope") {
+          isOutOfScope = true;
+          finalSessionId = event.session_id;
+        } else if (event.type === "error") {
+          throw new Error(event.message);
+        }
+      }
+
       const assistantMsg: ChatMessage = {
         role: "assistant",
-        content: data.is_out_of_scope
+        content: isOutOfScope
           ? "此問題超出所選法規範圍，無法提供答案。"
-          : data.answer ?? "",
-        cited_articles: data.cited_articles,
-        warning: data.warning,
-        is_out_of_scope: data.is_out_of_scope,
+          : finalAnswer,
+        cited_articles: finalCitedArticles,
+        warning: finalWarning,
+        is_out_of_scope: isOutOfScope,
       };
-      onNewMessage(userMsg, assistantMsg, data.session_id);
-      if (data.cited_articles?.length) onArticlesChange(data.cited_articles);
+
+      setPendingQuestion(null);
+      setSteps([]);
+      setStreamingContent("");
+      onNewMessage(userMsg, assistantMsg, finalSessionId);
+      if (finalCitedArticles.length) onArticlesChange(finalCitedArticles);
     } catch {
       const errorMsg: ChatMessage = { role: "assistant", content: "發生錯誤，請稍後重試。" };
+      setPendingQuestion(null);
+      setSteps([]);
+      setStreamingContent("");
       onNewMessage(userMsg, errorMsg, sessionId ?? "");
     } finally {
       setLoading(false);
     }
   }
+
+  const proseClass = "prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-table:text-xs prose-th:bg-slate-700 prose-th:p-2 prose-td:p-2 prose-td:border-slate-700 prose-tr:border-slate-700";
 
   return (
     <div className="flex-1 flex flex-col bg-slate-800 min-w-0">
@@ -90,8 +153,8 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
                 <div className="text-blue-400 font-semibold text-xs mb-2">🤖 AI 回覆</div>
               )}
               {msg.role === "assistant" ? (
-                <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <div className={proseClass}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>
               ) : (
                 <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -122,13 +185,54 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
             </div>
           </div>
         ))}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="bg-slate-900 text-slate-400 rounded-xl px-4 py-3 text-sm">
-              查詢中...
+
+        {/* Pending user message */}
+        {loading && pendingQuestion && (
+          <div className="flex justify-end">
+            <div className="max-w-[90%] md:max-w-[80%] rounded-xl px-4 py-3 text-sm leading-relaxed bg-blue-700 text-white rounded-br-sm">
+              <p className="whitespace-pre-wrap">{pendingQuestion}</p>
             </div>
           </div>
         )}
+
+        {/* Multi-step progress — shown during retrieval before first token */}
+        {loading && steps.length > 0 && !streamingContent && (
+          <div className="flex justify-start">
+            <div className="bg-slate-900 rounded-xl px-4 py-3 text-sm space-y-2">
+              {steps.map((s, i) => {
+                const isLast = i === steps.length - 1;
+                const icon = STEP_ICONS[s.step] ?? "•";
+                return (
+                  <div key={s.step} className="flex items-center gap-2.5">
+                    {isLast ? (
+                      <span className="text-base animate-bounce inline-block">{icon}</span>
+                    ) : (
+                      <span className="text-green-400 text-xs font-bold">✓</span>
+                    )}
+                    <span className={isLast ? "text-slate-300" : "text-slate-500 text-xs"}>
+                      {s.label}
+                      {isLast && <span className="animate-pulse">...</span>}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Streaming response bubble */}
+        {loading && streamingContent && (
+          <div className="flex justify-start">
+            <div className="max-w-[90%] md:max-w-[80%] bg-slate-900 text-slate-200 rounded-xl px-4 py-3 text-sm leading-relaxed rounded-bl-sm">
+              <div className="text-blue-400 font-semibold text-xs mb-2">🤖 AI 回覆</div>
+              <div className={proseClass}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{streamingContent}</ReactMarkdown>
+              </div>
+              <span className="inline-block w-0.5 h-3.5 bg-blue-400 animate-pulse ml-0.5 align-middle" />
+            </div>
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 

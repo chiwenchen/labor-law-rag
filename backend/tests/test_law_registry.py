@@ -1,8 +1,8 @@
 from app.services.law_registry import LAW_REGISTRY, BASE_URL, get_law_by_id
 
 
-def test_registry_has_eleven_laws():
-    assert len(LAW_REGISTRY) == 11
+def test_registry_has_twelve_laws():
+    assert len(LAW_REGISTRY) == 12
 
 
 def test_registry_includes_labor_standards_act():

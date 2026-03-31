@@ -1,5 +1,6 @@
 import uuid
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql import func
@@ -31,6 +32,7 @@ class LawArticle(Base):
     title = Column(String(200))
     content = Column(Text, nullable=False)
     embedding = Column(Vector(1024))
+    search_vector = Column(TSVECTOR)
     is_active = Column(Boolean, default=True)
     last_updated = Column(DateTime(timezone=True))
     version = Column(String(50))

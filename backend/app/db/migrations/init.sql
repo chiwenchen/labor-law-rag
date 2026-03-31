@@ -12,14 +12,14 @@ CREATE TABLE IF NOT EXISTS law_articles (
     title VARCHAR(200),
     content TEXT NOT NULL,
     embedding vector(1024),
+    search_vector tsvector,
     is_active BOOLEAN DEFAULT true,
     last_updated TIMESTAMP WITH TIME ZONE,
     version VARCHAR(50)
 );
 
-CREATE INDEX IF NOT EXISTS law_articles_embedding_idx
-    ON law_articles USING ivfflat (embedding vector_cosine_ops)
-    WITH (lists = 10);
+-- IVFFlat index omitted: dataset is small (<1000 rows), sequential exact scan is faster and 100% accurate.
+CREATE INDEX IF NOT EXISTS law_articles_search_vec_idx ON law_articles USING gin(search_vector);
 
 CREATE TABLE IF NOT EXISTS query_history (
     id SERIAL PRIMARY KEY,

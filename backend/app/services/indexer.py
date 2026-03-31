@@ -62,11 +62,15 @@ async def upsert_articles(
             )
             continue
 
+        from sqlalchemy import func as sa_func
+        search_vec = sa_func.to_tsvector("simple", article_data.content)
+
         # NOTE: SQLAlchemy ORM requires in-place mutation to track changes.
         # This is an intentional exception to the project's immutability rule.
         if existing_article:
             existing_article.content = article_data.content
             existing_article.embedding = embedding
+            existing_article.search_vector = search_vec
             existing_article.version = article_data.version
             existing_article.law_name = law_name
             result.updated += 1
@@ -77,6 +81,7 @@ async def upsert_articles(
                 article_number=article_data.article_number,
                 content=article_data.content,
                 embedding=embedding,
+                search_vector=search_vec,
                 version=article_data.version,
                 is_active=True,
             ))

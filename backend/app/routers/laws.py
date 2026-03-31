@@ -1,12 +1,13 @@
 from __future__ import annotations
 import logging
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db
 from app.db.models import LawUpdateLog, SupportedLaw
 from app.services.law_registry import LAW_REGISTRY, get_law_by_id
+from app.main import limiter
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -16,7 +17,8 @@ _REGISTRY_ORDER = {law.law_id: i for i, law in enumerate(LAW_REGISTRY)}
 
 
 @router.get("/laws")
-async def list_laws(db: AsyncSession = Depends(get_db)):
+@limiter.limit("30/minute")
+async def list_laws(request: Request, db: AsyncSession = Depends(get_db)):
     """Return all supported laws with their current status."""
     stmt = select(SupportedLaw)
     laws = (await db.execute(stmt)).scalars().all()
@@ -34,7 +36,8 @@ async def list_laws(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/laws/{law_id}/update")
-async def update_law(law_id: str, db: AsyncSession = Depends(get_db)):
+@limiter.limit("2/minute")
+async def update_law(law_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """Fetch and re-embed articles for one law.
 
     Synchronous long-poll: takes 30–120 seconds depending on article count.
@@ -66,7 +69,7 @@ async def update_law(law_id: str, db: AsyncSession = Depends(get_db)):
         db.add(log)
         await db.commit()
         logger.error(f"[{law_id}] Fetch failed: {e}")
-        raise HTTPException(status_code=502, detail=f"法規來源無法取得：{e}")
+        raise HTTPException(status_code=502, detail="法規來源暫時無法取得，請稍後再試")
 
     # Index articles (also updates supported_laws)
     index_result = await upsert_articles(articles, db, law_info.law_id, law_info.law_name)

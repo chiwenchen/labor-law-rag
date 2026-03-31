@@ -9,11 +9,12 @@ class LawInfo:
 
 
 LAW_REGISTRY: list[LawInfo] = [
+    LawInfo("N0020007", "勞資爭議處理法"),
     LawInfo("N0030001", "勞動基準法"),
     LawInfo("N0030002", "勞工請假規則"),
     LawInfo("N0030003", "大量解僱勞工保護法"),
-    LawInfo("N0030014", "勞資爭議處理法"),
-    LawInfo("N0030015", "性別平等工作法"),
+    LawInfo("N0030014", "性別平等工作法"),
+    LawInfo("N0030015", "性別平等工作法施行細則"),
     LawInfo("N0050001", "勞工保險條例"),
     LawInfo("N0060001", "勞工退休金條例"),
     LawInfo("N0060002", "職業安全衛生法"),

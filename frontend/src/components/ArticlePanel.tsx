@@ -7,12 +7,21 @@ interface Props {
   citedArticles: CitedArticle[];
 }
 
+function similarityColor(score: number): string {
+  if (score >= 0.8) return "text-green-400";
+  if (score >= 0.65) return "text-yellow-400";
+  return "text-orange-400";
+}
+
 export default function ArticlePanel({ citedArticles }: Props) {
   const [articles, setArticles] = useState<LawArticle[]>([]);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (citedArticles.length === 0) return;
+    if (citedArticles.length === 0) {
+      setArticles([]);
+      return;
+    }
     Promise.all(citedArticles.map((c) => getArticle(c.article_number, c.law_id)))
       .then(setArticles)
       .catch(console.error);
@@ -32,8 +41,10 @@ export default function ArticlePanel({ citedArticles }: Props) {
       <span className="text-blue-400 font-bold text-xs tracking-wide uppercase">法條原文</span>
       {articles.map((article) => {
         const isCollapsed = collapsed.has(article.article_number);
+        const cited = citedArticles.find((c) => c.article_number === article.article_number && c.law_id === article.law_id);
+        const similarity = cited?.similarity ?? 0;
         return (
-          <div key={article.article_number} className="bg-slate-800 rounded p-3">
+          <div key={`${article.law_id}-${article.article_number}`} className="bg-slate-800 rounded p-3">
             <button
               className="w-full text-left"
               onClick={() =>
@@ -48,8 +59,13 @@ export default function ArticlePanel({ citedArticles }: Props) {
                 })
               }
             >
-              <div className="text-green-400 font-bold text-xs mb-1">
-                {article.law_name} 第 {article.article_number} 條{article.title ? `（${article.title}）` : ""}
+              <div className="flex items-start justify-between gap-1 mb-1">
+                <div className="text-green-400 font-bold text-xs">
+                  {article.law_name} 第 {article.article_number} 條{article.title ? `（${article.title}）` : ""}
+                </div>
+                <span className={`text-[10px] font-mono shrink-0 ${similarityColor(similarity)}`}>
+                  {(similarity * 100).toFixed(0)}%
+                </span>
               </div>
               <div className="text-slate-500 text-[10px]">{isCollapsed ? "展開原文 ▼" : "收合 ▲"}</div>
             </button>
