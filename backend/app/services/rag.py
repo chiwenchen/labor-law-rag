@@ -149,8 +149,8 @@ async def _hybrid_search(
         sql = text(f"""
             WITH vector_ranked AS (
                 SELECT id,
-                       1 - (embedding <=> :embedding::vector) AS vscore,
-                       ROW_NUMBER() OVER (ORDER BY embedding <=> :embedding::vector) AS vrank
+                       1 - (embedding <=> CAST(:embedding AS vector)) AS vscore,
+                       ROW_NUMBER() OVER (ORDER BY embedding <=> CAST(:embedding AS vector)) AS vrank
                 FROM law_articles
                 WHERE is_active = true {law_filter}
             ),
@@ -185,10 +185,10 @@ async def _hybrid_search(
         # BM25 query is empty; fall back to pure vector search
         sql = text(f"""
             SELECT article_number, title, content, law_id, law_name,
-                   1 - (embedding <=> :embedding::vector) AS similarity
+                   1 - (embedding <=> CAST(:embedding AS vector)) AS similarity
             FROM law_articles
             WHERE is_active = true {law_filter}
-            ORDER BY embedding <=> :embedding::vector
+            ORDER BY embedding <=> CAST(:embedding AS vector)
             LIMIT :k
         """)
 
