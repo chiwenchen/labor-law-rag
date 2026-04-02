@@ -118,6 +118,20 @@ export default function Sidebar({
         📋 法規管理
       </Link>
 
+      {/* Admin nav link — only for admin users */}
+      {user?.access_role === "admin" && (
+        <Link
+          href="/admin"
+          className={`text-xs text-center py-1.5 rounded transition-colors ${
+            pathname === "/admin"
+              ? "bg-amber-950 text-amber-300 border border-amber-700"
+              : "text-amber-400 hover:text-amber-300 hover:bg-slate-800"
+          }`}
+        >
+          管理後台
+        </Link>
+      )}
+
       {/* User info + logout */}
       {user && (
         <div className="border-t border-slate-700 pt-2 mt-1">

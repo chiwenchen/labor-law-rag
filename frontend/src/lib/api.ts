@@ -6,6 +6,9 @@ import type {
   LawStatus,
   SupportedLaw,
   StreamEvent,
+  AdminUsersResponse,
+  AdminUserSessionsResponse,
+  AdminUser,
 } from "@/types";
 
 // Empty string = relative path, so requests go to the same host (works with ngrok, docker, etc.)
@@ -49,7 +52,11 @@ export async function* streamQuery(
     body: JSON.stringify(body),
     credentials: "include",
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const err = new Error(await res.text());
+    (err as Error & { status: number }).status = res.status;
+    throw err;
+  }
 
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
@@ -123,5 +130,56 @@ export async function updateLaw(
     signal: AbortSignal.timeout(180_000),
   });
   if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getAdminUsers(
+  page: number = 1,
+  limit: number = 20,
+): Promise<AdminUsersResponse> {
+  const res = await fetch(`${API_BASE}/api/admin/users?page=${page}&limit=${limit}`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to fetch admin users");
+  return res.json();
+}
+
+export async function getAdminUserSessions(
+  userId: string,
+  page: number = 1,
+  limit: number = 20,
+): Promise<AdminUserSessionsResponse> {
+  const res = await fetch(`${API_BASE}/api/admin/users/${userId}/sessions?page=${page}&limit=${limit}`, {
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to fetch user sessions");
+  return res.json();
+}
+
+export async function updateUserCredits(
+  userId: string,
+  credits: number,
+): Promise<AdminUser> {
+  const res = await fetch(`${API_BASE}/api/admin/users/${userId}/credits`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ credits }),
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to update credits");
+  return res.json();
+}
+
+export async function updateUserAccessRole(
+  userId: string,
+  accessRole: "admin" | "user",
+): Promise<AdminUser> {
+  const res = await fetch(`${API_BASE}/api/admin/users/${userId}/access-role`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ access_role: accessRole }),
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to update access role");
   return res.json();
 }
