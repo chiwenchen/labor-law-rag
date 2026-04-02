@@ -396,11 +396,11 @@ function UserRow({
                 {sessions.map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center justify-between bg-slate-900/50 rounded px-3 py-2 text-xs"
+                    className="grid grid-cols-[1fr_100px_180px] items-center bg-slate-900/50 rounded px-3 py-2 text-xs"
                   >
-                    <span className="text-slate-300 truncate max-w-[40%]">{s.title}</span>
-                    <span className="text-slate-500">{s.query_count} 則查詢</span>
-                    <span className="text-slate-600">{formatDate(s.created_at)}</span>
+                    <span className="text-slate-300 truncate">{s.title}</span>
+                    <span className="text-slate-500 text-center">{s.query_count} 則查詢</span>
+                    <span className="text-slate-600 text-right">{formatDate(s.created_at)}</span>
                   </div>
                 ))}
               </div>
