@@ -122,7 +122,13 @@ async def _extract_cited_article_numbers(answer: str, candidates: list[dict]) ->
             max_tokens=100,
             messages=[{"role": "user", "content": prompt}],
         )
-        result = json.loads(response.content[0].text.strip())
+        raw = response.content[0].text.strip()
+        # Strip markdown code fences if present (e.g. ```json\n[...]\n```)
+        if raw.startswith("```"):
+            raw = re.sub(r"^```\w*\n?", "", raw)
+            raw = re.sub(r"\n?```$", "", raw)
+            raw = raw.strip()
+        result = json.loads(raw)
         if isinstance(result, list) and result:
             cited_set = {str(n) for n in result}
             return [n for n in numbers if n in cited_set]
