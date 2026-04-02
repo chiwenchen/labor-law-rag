@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import json
 import logging
 import math
 import re
@@ -96,6 +97,38 @@ async def _generate_hypothetical_doc(question: str) -> str:
     except Exception:
         # Fallback: use original question if HyDE fails
         return question
+
+
+async def _extract_cited_article_numbers(answer: str, candidates: list[dict]) -> list[str]:
+    """Ask Haiku which article numbers from the candidate list were actually used in the answer.
+
+    Returns a list of article_number strings. Falls back to all candidates on any error.
+    """
+    if not candidates:
+        return []
+    numbers = [c["article_number"] for c in candidates]
+    prompt = (
+        f"以下是一段法律問題的回答：\n\n{answer}\n\n"
+        f"以下是提供給這段回答使用的法條編號列表（可能包含未被引用的條號）：\n"
+        f"{', '.join(numbers)}\n\n"
+        "請列出在上述回答中有被實際引用或提及的法條編號。"
+        "只輸出一個 JSON array，例如：[\"38\", \"38-1\"]。"
+        "若回答中沒有明確提及任何條號，輸出空 array：[]"
+    )
+    client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+    try:
+        response = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=100,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        result = json.loads(response.content[0].text.strip())
+        if isinstance(result, list) and result:
+            cited_set = {str(n) for n in result}
+            return [n for n in numbers if n in cited_set]
+    except Exception:
+        pass
+    return numbers  # fallback: return all
 
 
 async def _rewrite_question(question: str, history: list[dict]) -> str:
@@ -303,11 +336,14 @@ async def query_law(
         for row in articles
     ]
 
+    cited_numbers = await _extract_cited_article_numbers(answer, cited)
+    cited_filtered = [c for c in cited if c["article_number"] in cited_numbers]
+
     return QueryResult(
         is_out_of_scope=False,
         answer=answer,
         warning=warning,
-        cited_articles=cited,
+        cited_articles=cited_filtered,
     )
 
 
@@ -403,9 +439,12 @@ async def stream_query_law(
         yield {"type": "error", "message": "查詢過程中發生錯誤，請稍後再試"}
         return
 
+    cited_numbers = await _extract_cited_article_numbers(full_answer, cited)
+    cited_filtered = [c for c in cited if c["article_number"] in cited_numbers]
+
     yield {
         "type": "done",
-        "cited_articles": cited,
+        "cited_articles": cited_filtered,
         "warning": warning,
         "answer": full_answer,
     }
