@@ -13,6 +13,7 @@ services:
       - ./backend/app/db/migrations/002_multi_law.sql:/docker-entrypoint-initdb.d/02_multi_law.sql
       - ./backend/app/db/migrations/003_users.sql:/docker-entrypoint-initdb.d/03_users.sql
       - ./backend/app/db/migrations/004_auth_tables.sql:/docker-entrypoint-initdb.d/04_auth_tables.sql
+      - ./backend/app/db/migrations/005_rbac_credits.sql:/docker-entrypoint-initdb.d/05_rbac_credits.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
