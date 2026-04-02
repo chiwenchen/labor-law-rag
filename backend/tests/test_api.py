@@ -6,14 +6,14 @@ from unittest.mock import patch, AsyncMock
 from uuid import uuid4
 from app.main import app
 from app.services.rag import QueryResult
-from app.auth.store import session_store, SessionData
+from app.auth.store import SessionData
+from app.auth.dependencies import get_current_user
 
 
 def _inject_session(client: AsyncClient) -> None:
-    """Pre-seed a valid session cookie on the async client."""
-    token = str(uuid4())
-    session_store[token] = SessionData(user_id=uuid4(), email="test@example.com", role="employee")
-    client.cookies.set("session", token)
+    """Override get_current_user to return a fixed session (no DB needed)."""
+    user = SessionData(user_id=uuid4(), email="test@example.com", role="employee")
+    app.dependency_overrides[get_current_user] = lambda: user
 
 
 @pytest.mark.asyncio

@@ -3,13 +3,13 @@ from httpx import AsyncClient, ASGITransport
 from unittest.mock import AsyncMock, patch, MagicMock
 from uuid import uuid4
 from app.main import app
-from app.auth.store import session_store, SessionData
+from app.auth.store import SessionData
+from app.auth.dependencies import get_current_user
 
 
 def _inject_hr_session(client: AsyncClient) -> None:
-    token = str(uuid4())
-    session_store[token] = SessionData(user_id=uuid4(), email="hr@test.com", role="hr")
-    client.cookies.set("session", token)
+    user = SessionData(user_id=uuid4(), email="hr@test.com", role="hr")
+    app.dependency_overrides[get_current_user] = lambda: user
 
 
 @pytest.mark.asyncio
