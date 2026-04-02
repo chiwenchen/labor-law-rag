@@ -80,7 +80,7 @@ export interface AdminUser {
   role: "hr" | "employee";
   access_role: "admin" | "user";
   credits: number;
-  last_active: string | null;
+  last_query_at: string | null;
   session_count: number;
 }
 

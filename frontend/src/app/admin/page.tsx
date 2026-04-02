@@ -373,7 +373,7 @@ function UserRow({
             </button>
           )}
         </td>
-        <td className="px-4 py-3 text-slate-400 text-xs">{formatDate(user.last_active)}</td>
+        <td className="px-4 py-3 text-slate-400 text-xs">{formatDate(user.last_query_at)}</td>
         <td className="px-4 py-3 text-slate-300">{user.session_count}</td>
       </tr>
 
