@@ -1,20 +1,41 @@
 import json
 import uuid
 from typing import Literal, Optional
+from uuid import UUID
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.auth.store import SessionData
 from app.db.database import get_db, AsyncSessionLocal
-from app.db.models import Session, QueryHistory
+from app.db.models import Session, QueryHistory, User
 from app.services.rag import query_law, stream_query_law
 from app.services.law_registry import VALID_LAW_IDS
 from app.limiter import limiter
 
 router = APIRouter()
+
+
+async def check_and_deduct_credit(user_id: UUID, db: AsyncSession) -> None:
+    """Check user has credits and deduct one. Raises 402 if no credits remain."""
+    row = (
+        await db.execute(
+            select(User.credits).where(User.id == user_id).with_for_update()
+        )
+    ).scalar_one_or_none()
+
+    if row is None or row <= 0:
+        raise HTTPException(
+            status_code=402,
+            detail="查詢額度已用完，請聯繫管理員取得更多額度。",
+        )
+
+    await db.execute(
+        update(User).where(User.id == user_id).values(credits=User.credits - 1)
+    )
 
 
 class HistoryMessage(BaseModel):
@@ -39,6 +60,8 @@ async def handle_query(
 ):
     if len(body.question) > 500:
         raise HTTPException(status_code=400, detail="問題長度不得超過 500 字")
+
+    await check_and_deduct_credit(user.user_id, db)
 
     # Whitelist law_ids against registry — silently drop unknown IDs
     safe_law_ids = (
@@ -113,6 +136,8 @@ async def handle_query_stream(
 ):
     if len(body.question) > 500:
         raise HTTPException(status_code=400, detail="問題長度不得超過 500 字")
+
+    await check_and_deduct_credit(user.user_id, db)
 
     safe_law_ids = (
         [lid for lid in body.law_ids if lid in VALID_LAW_IDS]
