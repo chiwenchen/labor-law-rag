@@ -142,7 +142,10 @@ async def verify_otp(
         return {"is_new_user": True, "pending_token": pending_token}
 
     token = str(uuid4())
-    db.add(AuthSession(token=token, user_id=user.id, email=user.email, role=user.role))
+    db.add(AuthSession(
+        token=token, user_id=user.id, email=user.email,
+        role=user.role, access_role=user.access_role,
+    ))
     await db.commit()
     _set_session_cookie(response, token)
     return {"is_new_user": False}
@@ -174,12 +177,15 @@ async def register(
         delete(PendingRegistration).where(PendingRegistration.token == request.pending_token)
     )
 
-    user = User(email=email, role=request.role)
+    user = User(email=email, role=request.role, access_role="employee")
     db.add(user)
     await db.flush()  # get user.id before commit
 
     token = str(uuid4())
-    db.add(AuthSession(token=token, user_id=user.id, email=user.email, role=user.role))
+    db.add(AuthSession(
+        token=token, user_id=user.id, email=user.email,
+        role=user.role, access_role=user.access_role,
+    ))
     await db.commit()
 
     _set_session_cookie(response, token)
@@ -198,4 +204,4 @@ async def logout(request: Request, response: Response, db: AsyncSession = Depend
 
 @router.get("/me")
 async def get_me(user: SessionData = Depends(get_current_user)):
-    return {"email": user.email, "role": user.role}
+    return {"email": user.email, "role": user.role, "access_role": user.access_role}
