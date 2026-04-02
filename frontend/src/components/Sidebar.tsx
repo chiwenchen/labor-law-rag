@@ -60,7 +60,7 @@ export default function Sidebar({
       <span className="text-blue-400 font-bold text-xs tracking-wide uppercase">查詢紀錄</span>
       <button
         onClick={onNewSession}
-        className="bg-blue-700 text-white rounded-md py-2 text-xs font-medium hover:bg-blue-600 transition-colors"
+        className="bg-blue-700 text-white rounded-md py-2.5 text-xs font-medium hover:bg-blue-600 transition-colors min-h-[44px]"
       >
         + 新增查詢
       </button>
@@ -77,7 +77,7 @@ export default function Sidebar({
           <button
             key={s.id}
             onClick={() => onSelectSession(s.id)}
-            className={`text-left px-3 py-2 rounded text-xs transition-colors ${
+            className={`text-left px-3 py-2.5 rounded text-xs transition-colors min-h-[44px] flex items-center ${
               s.id === activeSessionId
                 ? "bg-blue-950 border-l-2 border-blue-400 text-blue-300"
                 : "text-slate-400 hover:bg-slate-800"
@@ -135,7 +135,7 @@ export default function Sidebar({
                 await logout();
                 window.location.href = "/login";
               }}
-              className="text-[10px] text-red-500 hover:text-red-400 transition-colors"
+              className="text-xs text-red-500 hover:text-red-400 transition-colors px-2 py-1"
             >
               登出
             </button>

@@ -125,7 +125,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
       <div className="bg-slate-800 rounded-xl p-8 w-full max-w-sm shadow-xl border border-slate-700">
-        <h1 className="text-white font-bold text-xl mb-1">勞基法查詢系統</h1>
+        <h1 className="text-white font-extrabold text-2xl mb-1">勞基法查詢系統</h1>
         <p className="text-slate-400 text-sm mb-6">
           {step === "email" && "輸入 Email 以收取驗證碼"}
           {step === "otp" && `驗證碼已寄至 ${email}`}
@@ -147,12 +147,12 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
               placeholder="your@email.com"
-              className="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500"
+              className="bg-slate-900 border border-slate-600 rounded-lg px-3 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500"
             />
             <button
               onClick={handleSendOtp}
               disabled={loading || !email}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg py-2 text-sm font-medium transition-colors"
+              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg py-3 text-sm font-medium transition-colors"
             >
               {loading ? "寄送中..." : "寄送驗證碼"}
             </button>
@@ -181,7 +181,7 @@ export default function LoginPage() {
             <button
               onClick={handleVerifyOtp}
               disabled={loading || otp.join("").length !== 6}
-              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg py-2 text-sm font-medium transition-colors"
+              className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg py-3 text-sm font-medium transition-colors"
             >
               {loading ? "驗證中..." : "驗證"}
             </button>

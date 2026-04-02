@@ -136,8 +136,12 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
       </div>
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
         {messages.length === 0 && (
-          <div className="text-slate-500 text-sm text-center mt-20">
-            輸入勞基法相關問題開始查詢
+          <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 px-4">
+            <div className="text-4xl">&#9878;</div>
+            <h2 className="text-slate-300 text-lg font-semibold">勞基法查詢系統</h2>
+            <p className="text-slate-500 text-sm max-w-xs">
+              輸入勞動法規相關問題，AI 將為你查找法條並提供解答
+            </p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -171,7 +175,7 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
                     <button
                       key={`${c.law_id}-${c.article_number}`}
                       onClick={() => onArticleSelect(c)}
-                      className="bg-blue-950 border border-blue-700 text-blue-300 px-2 py-1 rounded-full text-xs"
+                      className="bg-blue-950 border border-blue-700 text-blue-300 px-3 py-1.5 rounded-full text-xs min-h-[32px]"
                       title={c.law_name}
                     >
                       {c.law_name} §{c.article_number}

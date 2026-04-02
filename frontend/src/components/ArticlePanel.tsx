@@ -30,8 +30,9 @@ export default function ArticlePanel({ citedArticles }: Props) {
 
   if (articles.length === 0) {
     return (
-      <aside className="hidden md:flex w-60 bg-slate-900 p-3 text-xs text-slate-600 items-center justify-center shrink-0">
-        引用法條將顯示於此
+      <aside className="hidden md:flex w-60 bg-slate-900 p-3 text-xs text-slate-600 items-center justify-center shrink-0 flex-col gap-2">
+        <div className="text-2xl">&#128218;</div>
+        <span>引用法條將顯示於此</span>
       </aside>
     );
   }
