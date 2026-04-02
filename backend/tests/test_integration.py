@@ -39,8 +39,8 @@ def _override_db(mock_db):
     app.dependency_overrides[get_db] = _mock_get_db
 
 
-def _inject_auth(email="test@example.com", role="employee"):
-    user = SessionData(user_id=uuid4(), email=email, role=role)
+def _inject_auth(email="test@example.com", role="employee", access_role="employee"):
+    user = SessionData(user_id=uuid4(), email=email, role=role, access_role=access_role)
     app.dependency_overrides[get_current_user] = lambda: user
 
 
@@ -68,6 +68,7 @@ class TestCookieSecureFlag:
         mock_user.id = uuid4()
         mock_user.email = TEST_BYPASS_EMAIL
         mock_user.role = "employee"
+        mock_user.access_role = "employee"
 
         _override_db(mock_db)
         try:
@@ -92,6 +93,7 @@ class TestCookieSecureFlag:
         mock_user.id = uuid4()
         mock_user.email = TEST_BYPASS_EMAIL
         mock_user.role = "employee"
+        mock_user.access_role = "employee"
 
         _override_db(mock_db)
         try:
@@ -121,6 +123,7 @@ class TestOtpBypass:
         mock_user.id = uuid4()
         mock_user.email = TEST_BYPASS_EMAIL
         mock_user.role = "employee"
+        mock_user.access_role = "employee"
 
         _override_db(mock_db)
         try:
@@ -192,7 +195,8 @@ class TestQueryBodyParsing:
 
         app.dependency_overrides[get_db] = mock_get_db
         try:
-            with patch("app.routers.query.query_law", return_value=mock_result):
+            with patch("app.routers.query.query_law", return_value=mock_result), \
+                 patch("app.routers.query.check_and_deduct_credit", new_callable=AsyncMock):
                 response = authed_client.post("/api/query", json={"question": "加班費怎麼算"})
         finally:
             app.dependency_overrides.pop(get_db, None)
@@ -211,7 +215,8 @@ class TestQueryBodyParsing:
 
         app.dependency_overrides[get_db] = mock_get_db
         try:
-            with patch("app.routers.query.stream_query_law", return_value=mock_stream()):
+            with patch("app.routers.query.stream_query_law", return_value=mock_stream()), \
+                 patch("app.routers.query.check_and_deduct_credit", new_callable=AsyncMock):
                 response = authed_client.post("/api/query/stream", json={"question": "加班費怎麼算"})
         finally:
             app.dependency_overrides.pop(get_db, None)
@@ -240,6 +245,7 @@ class TestFullAuthQueryFlow:
         mock_user.id = uuid4()
         mock_user.email = TEST_BYPASS_EMAIL
         mock_user.role = "employee"
+        mock_user.access_role = "employee"
 
         mock_result = QueryResult(
             is_out_of_scope=False,
@@ -279,9 +285,10 @@ class TestFullAuthQueryFlow:
                 # Step 3: query using the session cookie
                 # Override get_current_user so the query step doesn't need DB auth
                 app.dependency_overrides[get_current_user] = lambda: SessionData(
-                    user_id=mock_user.id, email=mock_user.email, role=mock_user.role
+                    user_id=mock_user.id, email=mock_user.email, role=mock_user.role, access_role="employee"
                 )
-                with patch("app.routers.query.query_law", return_value=mock_result):
+                with patch("app.routers.query.query_law", return_value=mock_result), \
+                     patch("app.routers.query.check_and_deduct_credit", new_callable=AsyncMock):
                     r = await client.post(
                         "/api/query",
                         json={"question": "切除子宮可以申請勞保給付嗎"},

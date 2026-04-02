@@ -47,6 +47,7 @@ def test_get_me_with_valid_session_returns_user(client):
     mock_session_row.user_id = uuid4()
     mock_session_row.email = "hr@test.com"
     mock_session_row.role = "hr"
+    mock_session_row.access_role = "hr"
 
     mock_db = _make_mock_db()
     mock_db.execute.return_value = MagicMock(scalar_one_or_none=MagicMock(return_value=mock_session_row))

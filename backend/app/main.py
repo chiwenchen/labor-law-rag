@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.limiter import limiter
-from app.routers import query, sessions, articles, laws, auth
+from app.routers import query, sessions, articles, laws, auth, admin
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type", "Accept", "Cookie"],
     allow_credentials=True,
 )
@@ -97,3 +97,4 @@ app.include_router(sessions.router, prefix="/api")
 app.include_router(articles.router, prefix="/api")
 app.include_router(laws.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
+app.include_router(admin.router, prefix="/api/admin")

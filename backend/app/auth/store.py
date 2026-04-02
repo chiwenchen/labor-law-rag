@@ -9,3 +9,4 @@ class SessionData:
     user_id: UUID
     email: str
     role: Literal["hr", "employee"]
+    access_role: str = "employee"

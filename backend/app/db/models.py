@@ -17,6 +17,8 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(Text, unique=True, nullable=False)
     role = Column(String(20), nullable=False)
+    access_role = Column(String(20), nullable=False, server_default='employee')
+    credits = Column(Integer, nullable=False, server_default='0')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -104,4 +106,5 @@ class AuthSession(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     email = Column(Text, nullable=False)
     role = Column(String(20), nullable=False)
+    access_role = Column(String(20), nullable=False, server_default='employee')
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

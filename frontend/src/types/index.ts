@@ -71,4 +71,37 @@ export interface SupportedLaw {
 export interface User {
   email: string;
   role: "hr" | "employee";
+  access_role?: "admin" | "user";
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  role: "hr" | "employee";
+  access_role: "admin" | "user";
+  credits: number;
+  last_active: string | null;
+  session_count: number;
+}
+
+export interface AdminSession {
+  id: string;
+  title: string;
+  query_count: number;
+  created_at: string;
+  last_query_at: string | null;
+}
+
+export interface AdminUsersResponse {
+  users: AdminUser[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AdminUserSessionsResponse {
+  sessions: AdminSession[];
+  total: number;
+  page: number;
+  limit: number;
 }

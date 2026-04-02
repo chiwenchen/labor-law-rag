@@ -111,8 +111,14 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
       setStreamingContent("");
       onNewMessage(userMsg, assistantMsg, finalSessionId);
       if (finalCitedArticles.length) onArticlesChange(finalCitedArticles);
-    } catch {
-      const errorMsg: ChatMessage = { role: "assistant", content: "發生錯誤，請稍後重試。" };
+    } catch (err: unknown) {
+      const is402 = typeof err === "object" && err !== null && "status" in err && (err as { status: number }).status === 402;
+      const errorMsg: ChatMessage = {
+        role: "assistant",
+        content: is402
+          ? "CREDITS_EXHAUSTED"
+          : "發生錯誤，請稍後重試。",
+      };
       setPendingQuestion(null);
       setSteps([]);
       setStreamingContent("");
@@ -153,10 +159,14 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
                   : "bg-slate-900 text-slate-200 rounded-bl-sm"
               }`}
             >
-              {msg.role === "assistant" && (
+              {msg.role === "assistant" && msg.content !== "CREDITS_EXHAUSTED" && (
                 <div className="text-blue-400 font-semibold text-xs mb-2">🤖 AI 回覆</div>
               )}
-              {msg.role === "assistant" ? (
+              {msg.content === "CREDITS_EXHAUSTED" ? (
+                <div className="bg-amber-950 border border-amber-800 text-amber-300 rounded-lg px-4 py-3 text-sm">
+                  查詢額度已用完，請聯繫管理員取得更多額度。
+                </div>
+              ) : msg.role === "assistant" ? (
                 <div className={proseClass}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>

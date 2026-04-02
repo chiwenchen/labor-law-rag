@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Callable
+
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,4 +27,20 @@ async def get_current_user(
     if row is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    return SessionData(user_id=row.user_id, email=row.email, role=row.role)
+    return SessionData(
+        user_id=row.user_id,
+        email=row.email,
+        role=row.role,
+        access_role=row.access_role,
+    )
+
+
+def require_access_role(*allowed_roles: str) -> Callable:
+    """FastAPI dependency factory that checks the user's access_role against allowed roles."""
+
+    async def _check(user: SessionData = Depends(get_current_user)) -> SessionData:
+        if user.access_role not in allowed_roles:
+            raise HTTPException(status_code=403, detail="權限不足")
+        return user
+
+    return _check

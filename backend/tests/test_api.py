@@ -12,7 +12,7 @@ from app.auth.dependencies import get_current_user
 
 def _inject_session(client: AsyncClient) -> None:
     """Override get_current_user to return a fixed session (no DB needed)."""
-    user = SessionData(user_id=uuid4(), email="test@example.com", role="employee")
+    user = SessionData(user_id=uuid4(), email="test@example.com", role="employee", access_role="employee")
     app.dependency_overrides[get_current_user] = lambda: user
 
 
@@ -34,7 +34,8 @@ async def test_query_endpoint_returns_answer():
     from app.db.database import get_db
     app.dependency_overrides[get_db] = mock_get_db
 
-    with patch("app.routers.query.query_law", return_value=mock_result):
+    with patch("app.routers.query.query_law", return_value=mock_result), \
+         patch("app.routers.query.check_and_deduct_credit", new_callable=AsyncMock):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             _inject_session(client)
             response = await client.post("/api/query", json={"question": "員工到職一年有幾天特休？"})
@@ -68,7 +69,8 @@ async def test_query_endpoint_returns_out_of_scope():
     from app.db.database import get_db
     app.dependency_overrides[get_db] = mock_get_db
 
-    with patch("app.routers.query.query_law", return_value=mock_result):
+    with patch("app.routers.query.query_law", return_value=mock_result), \
+         patch("app.routers.query.check_and_deduct_credit", new_callable=AsyncMock):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             _inject_session(client)
             response = await client.post("/api/query", json={"question": "我想聊感情"})
