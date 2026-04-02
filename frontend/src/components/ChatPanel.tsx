@@ -171,7 +171,7 @@ export default function ChatPanel({ sessionId, messages, onNewMessage, onArticle
                     <button
                       key={`${c.law_id}-${c.article_number}`}
                       onClick={() => onArticleSelect(c)}
-                      className="bg-blue-950 border border-blue-700 text-blue-300 px-2 py-1 rounded-full text-xs"
+                      className="bg-blue-950 border border-blue-700 text-blue-300 px-3 py-1.5 rounded-full text-xs min-h-[32px]"
                       title={c.law_name}
                     >
                       {c.law_name} §{c.article_number}
