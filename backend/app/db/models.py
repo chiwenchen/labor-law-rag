@@ -79,3 +79,29 @@ class LawUpdateLog(Base):
     articles_changed = Column(Integer, default=0)
     status = Column(String(20), nullable=False)
     error_message = Column(Text)
+
+
+class OtpCode(Base):
+    __tablename__ = "otp_codes"
+
+    email = Column(Text, primary_key=True)
+    otp = Column(Text, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+
+class PendingRegistration(Base):
+    __tablename__ = "pending_registrations"
+
+    token = Column(Text, primary_key=True)
+    email = Column(Text, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+
+    token = Column(Text, primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    email = Column(Text, nullable=False)
+    role = Column(String(20), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
