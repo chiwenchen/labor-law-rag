@@ -8,7 +8,7 @@ from app.auth.dependencies import get_current_user
 
 
 def _inject_hr_session(client: AsyncClient) -> None:
-    user = SessionData(user_id=uuid4(), email="hr@test.com", role="hr")
+    user = SessionData(user_id=uuid4(), email="hr@test.com", role="hr", access_role="hr")
     app.dependency_overrides[get_current_user] = lambda: user
 
 

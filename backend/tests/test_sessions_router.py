@@ -14,7 +14,7 @@ from app.db.database import get_db
 
 def _inject_auth(user_id=None, email="test@example.com", role="employee"):
     uid = user_id or uuid4()
-    user = SessionData(user_id=uid, email=email, role=role)
+    user = SessionData(user_id=uid, email=email, role=role, access_role="employee")
     app.dependency_overrides[get_current_user] = lambda: user
     return uid
 
