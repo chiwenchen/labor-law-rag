@@ -39,10 +39,10 @@ export default function LoginPage() {
     }
   }
 
-  async function handleVerifyOtp() {
+  async function handleVerifyOtp(otpOverride?: string) {
     setError("");
     setLoading(true);
-    const otpStr = otp.join("");
+    const otpStr = otpOverride ?? otp.join("");
     try {
       const res = await fetch(`${API_BASE}/api/auth/otp/verify`, {
         method: "POST",
@@ -97,7 +97,11 @@ export default function LoginPage() {
     const next = [...otp];
     next[index] = value;
     setOtp(next);
-    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+    if (value && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    } else if (value && index === 5 && next.every((d) => d !== "")) {
+      handleVerifyOtp(next.join(""));
+    }
   }
 
   function handleOtpKeyDown(index: number, e: KeyboardEvent<HTMLInputElement>) {
