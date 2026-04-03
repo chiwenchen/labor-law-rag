@@ -16,6 +16,7 @@ from app.auth.store import SessionData
 from app.db.database import get_db
 from app.db.models import AuthSession, OtpCode, PendingRegistration, User
 from app.limiter import limiter
+from app.config import settings
 from app.services.email_service import send_otp_email
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,6 @@ def _generate_otp() -> str:
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
-    from app.config import settings
     secure = settings.frontend_url.startswith("https")
     response.set_cookie(
         key=COOKIE_NAME,
@@ -97,11 +97,17 @@ async def send_otp(
     await db.execute(stmt)
     await db.commit()
 
-    try:
-        send_otp_email(body.email, otp)
-    except Exception as e:
-        logger.error(f"Failed to send OTP email to {body.email}: {e}")
-        raise HTTPException(status_code=502, detail="無法寄送驗證碼，請稍後再試")
+    should_send = (
+        not settings.skip_otp_email
+        or normalized in settings.full_auth_email_list
+    )
+
+    if should_send:
+        try:
+            send_otp_email(body.email, otp)
+        except Exception as e:
+            logger.error(f"Failed to send OTP email to {body.email}: {e}")
+            raise HTTPException(status_code=502, detail="無法寄送驗證碼，請稍後再試")
 
     return {"detail": "驗證碼已寄出"}
 
@@ -113,10 +119,12 @@ async def verify_otp(
     db: AsyncSession = Depends(get_db),
 ):
     normalized = _normalize_email(request.email)
-    TEST_BYPASS_EMAIL = "cwchen2000@gmail.com"
-    is_test_bypass = normalized == TEST_BYPASS_EMAIL
+    should_skip_otp = (
+        settings.skip_otp_verification
+        and normalized not in settings.full_auth_email_list
+    )
 
-    if not is_test_bypass:
+    if not should_skip_otp:
         row = (
             await db.execute(select(OtpCode).where(OtpCode.email == normalized))
         ).scalar_one_or_none()
@@ -134,6 +142,13 @@ async def verify_otp(
         await db.commit()
 
     user = await _get_user_by_email(normalized, db)
+
+    # Auto-register in dev mode: create user automatically so no registration step needed
+    if user is None and should_skip_otp:
+        user = User(email=normalized, role="employee", access_role="employee", credits=100)
+        db.add(user)
+        await db.flush()
+
     if user is None:
         pending_token = str(uuid4())
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=PENDING_TTL_MINUTES)

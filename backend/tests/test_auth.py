@@ -67,7 +67,11 @@ def test_otp_send_calls_email_and_commits(client):
     mock_db = _make_mock_db()
     _override_db(mock_db)
     try:
-        with patch("app.routers.auth.send_otp_email") as mock_send:
+        with patch("app.routers.auth.settings") as mock_settings, \
+             patch("app.routers.auth.send_otp_email") as mock_send:
+            mock_settings.skip_otp_email = False
+            mock_settings.full_auth_email_list = []
+            mock_settings.frontend_url = "http://localhost:3000"
             response = client.post("/api/auth/otp/send", json={"email": "user@test.com"})
         mock_send.assert_called_once()
     finally:
@@ -94,7 +98,11 @@ def test_otp_send_normalizes_gmail_plus_address(client):
     mock_db.execute = capturing_execute
     _override_db(mock_db)
     try:
-        with patch("app.routers.auth.send_otp_email") as mock_send:
+        with patch("app.routers.auth.settings") as mock_settings, \
+             patch("app.routers.auth.send_otp_email") as mock_send:
+            mock_settings.skip_otp_email = False
+            mock_settings.full_auth_email_list = []
+            mock_settings.frontend_url = "http://localhost:3000"
             response = client.post("/api/auth/otp/send", json={"email": "abc+1@gmail.com"})
         # The email service is called with the original email
         mock_send.assert_called_once()
@@ -114,7 +122,11 @@ def test_otp_verify_no_otp_in_db_returns_400(client):
     mock_db.execute.return_value = MagicMock(scalar_one_or_none=MagicMock(return_value=None))
     _override_db(mock_db)
     try:
-        response = client.post("/api/auth/otp/verify", json={"email": "user@test.com", "otp": "000000"})
+        with patch("app.routers.auth.settings") as mock_settings:
+            mock_settings.skip_otp_verification = False
+            mock_settings.full_auth_email_list = []
+            mock_settings.frontend_url = "http://localhost:3000"
+            response = client.post("/api/auth/otp/verify", json={"email": "user@test.com", "otp": "000000"})
     finally:
         _clear_overrides()
     assert response.status_code == 400
@@ -129,7 +141,11 @@ def test_otp_verify_wrong_otp_returns_400(client):
     mock_db.execute.return_value = MagicMock(scalar_one_or_none=MagicMock(return_value=mock_otp_row))
     _override_db(mock_db)
     try:
-        response = client.post("/api/auth/otp/verify", json={"email": "user@test.com", "otp": "000000"})
+        with patch("app.routers.auth.settings") as mock_settings:
+            mock_settings.skip_otp_verification = False
+            mock_settings.full_auth_email_list = []
+            mock_settings.frontend_url = "http://localhost:3000"
+            response = client.post("/api/auth/otp/verify", json={"email": "user@test.com", "otp": "000000"})
     finally:
         _clear_overrides()
     assert response.status_code == 400
@@ -144,7 +160,11 @@ def test_otp_verify_expired_otp_returns_400(client):
     mock_db.execute.return_value = MagicMock(scalar_one_or_none=MagicMock(return_value=mock_otp_row))
     _override_db(mock_db)
     try:
-        response = client.post("/api/auth/otp/verify", json={"email": "user@test.com", "otp": "123456"})
+        with patch("app.routers.auth.settings") as mock_settings:
+            mock_settings.skip_otp_verification = False
+            mock_settings.full_auth_email_list = []
+            mock_settings.frontend_url = "http://localhost:3000"
+            response = client.post("/api/auth/otp/verify", json={"email": "user@test.com", "otp": "123456"})
     finally:
         _clear_overrides()
     assert response.status_code == 400
@@ -175,7 +195,11 @@ def test_otp_verify_new_user_returns_pending_token(client):
     mock_db.add = MagicMock()
     mock_db.flush = AsyncMock()
 
-    with patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=None):
+    with patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=None), \
+         patch("app.routers.auth.settings") as mock_settings:
+        mock_settings.skip_otp_verification = False
+        mock_settings.full_auth_email_list = []
+        mock_settings.frontend_url = "http://localhost:3000"
         _override_db(mock_db)
         try:
             response = client.post("/api/auth/otp/verify", json={"email": "new@test.com", "otp": "654321"})
@@ -203,7 +227,11 @@ def test_otp_verify_existing_user_sets_cookie(client):
     mock_db.commit = AsyncMock()
     mock_db.add = MagicMock()
 
-    with patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=mock_user):
+    with patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=mock_user), \
+         patch("app.routers.auth.settings") as mock_settings:
+        mock_settings.skip_otp_verification = False
+        mock_settings.full_auth_email_list = []
+        mock_settings.frontend_url = "http://localhost:3000"
         _override_db(mock_db)
         try:
             response = client.post("/api/auth/otp/verify", json={"email": "hr@test.com", "otp": "111111"})

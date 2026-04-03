@@ -1,8 +1,8 @@
 """
-Integration tests covering bugs fixed in fix/cookie-secure:
+Integration tests covering:
 
 1. Cookie secure flag respects FRONTEND_URL (http → insecure, https → secure)
-2. OTP bypass for test email (cwchen2000@gmail.com accepts any OTP)
+2. OTP bypass via config-based feature flags (skip_otp_verification, full_auth_emails)
 3. Query endpoint body parsing works with @limiter.limit decorator
 4. Stream endpoint body parsing works with @limiter.limit decorator
 5. Full auth → query flow succeeds end-to-end
@@ -24,7 +24,8 @@ from app.db.database import get_db
 from app.services.rag import QueryResult
 
 
-TEST_BYPASS_EMAIL = "cwchen2000@gmail.com"
+DEV_TEST_EMAIL = "devtest@example.com"
+FULL_AUTH_EMAIL = "cwchen2000@gmail.com"
 
 
 def _make_mock_db():
@@ -66,18 +67,20 @@ class TestCookieSecureFlag:
         mock_db = _make_mock_db()
         mock_user = MagicMock()
         mock_user.id = uuid4()
-        mock_user.email = TEST_BYPASS_EMAIL
+        mock_user.email = DEV_TEST_EMAIL
         mock_user.role = "employee"
         mock_user.access_role = "employee"
 
         _override_db(mock_db)
         try:
             with patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=mock_user):
-                with patch("app.config.settings") as mock_settings:
+                with patch("app.routers.auth.settings") as mock_settings:
+                    mock_settings.skip_otp_verification = True
+                    mock_settings.full_auth_email_list = [FULL_AUTH_EMAIL]
                     mock_settings.frontend_url = "http://localhost:3000"
                     response = client.post(
                         "/api/auth/otp/verify",
-                        json={"email": TEST_BYPASS_EMAIL, "otp": "000000"},
+                        json={"email": DEV_TEST_EMAIL, "otp": "000000"},
                     )
         finally:
             app.dependency_overrides = {}
@@ -91,18 +94,20 @@ class TestCookieSecureFlag:
         mock_db = _make_mock_db()
         mock_user = MagicMock()
         mock_user.id = uuid4()
-        mock_user.email = TEST_BYPASS_EMAIL
+        mock_user.email = DEV_TEST_EMAIL
         mock_user.role = "employee"
         mock_user.access_role = "employee"
 
         _override_db(mock_db)
         try:
             with patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=mock_user):
-                with patch("app.config.settings") as mock_settings:
+                with patch("app.routers.auth.settings") as mock_settings:
+                    mock_settings.skip_otp_verification = True
+                    mock_settings.full_auth_email_list = [FULL_AUTH_EMAIL]
                     mock_settings.frontend_url = "https://example.com"
                     response = client.post(
                         "/api/auth/otp/verify",
-                        json={"email": TEST_BYPASS_EMAIL, "otp": "000000"},
+                        json={"email": DEV_TEST_EMAIL, "otp": "000000"},
                     )
         finally:
             app.dependency_overrides = {}
@@ -117,24 +122,30 @@ class TestCookieSecureFlag:
 # ---------------------------------------------------------------------------
 
 class TestOtpBypass:
-    def test_bypass_email_accepts_any_otp(self, client):
+    def test_dev_mode_accepts_any_otp(self, client):
+        """When skip_otp_verification=True and email not in full_auth_emails, any OTP works."""
         mock_db = _make_mock_db()
         mock_user = MagicMock()
         mock_user.id = uuid4()
-        mock_user.email = TEST_BYPASS_EMAIL
+        mock_user.email = DEV_TEST_EMAIL
         mock_user.role = "employee"
         mock_user.access_role = "employee"
 
         _override_db(mock_db)
         try:
-            with patch("app.routers.auth.send_otp_email"):
-                client.post("/api/auth/otp/send", json={"email": TEST_BYPASS_EMAIL})
+            with patch("app.routers.auth.settings") as mock_settings:
+                mock_settings.skip_otp_email = True
+                mock_settings.skip_otp_verification = True
+                mock_settings.full_auth_email_list = [FULL_AUTH_EMAIL]
+                mock_settings.frontend_url = "http://localhost:3000"
 
-            with patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=mock_user):
-                response = client.post(
-                    "/api/auth/otp/verify",
-                    json={"email": TEST_BYPASS_EMAIL, "otp": "000000"},
-                )
+                client.post("/api/auth/otp/send", json={"email": DEV_TEST_EMAIL})
+
+                with patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=mock_user):
+                    response = client.post(
+                        "/api/auth/otp/verify",
+                        json={"email": DEV_TEST_EMAIL, "otp": "000000"},
+                    )
         finally:
             app.dependency_overrides = {}
 
@@ -142,35 +153,44 @@ class TestOtpBypass:
         assert response.json()["is_new_user"] is False
         assert "session" in response.cookies
 
-    def test_bypass_email_accepts_wrong_otp_without_prior_send(self, client):
-        """Bypass works even when no OTP was ever sent."""
+    def test_dev_mode_accepts_wrong_otp_without_prior_send(self, client):
+        """Dev bypass works even when no OTP was ever sent."""
         mock_db = _make_mock_db()
         mock_user = MagicMock()
         mock_user.id = uuid4()
-        mock_user.email = TEST_BYPASS_EMAIL
+        mock_user.email = DEV_TEST_EMAIL
         mock_user.role = "hr"
+        mock_user.access_role = "employee"
 
         _override_db(mock_db)
         try:
-            with patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=mock_user):
+            with patch("app.routers.auth.settings") as mock_settings, \
+                 patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=mock_user):
+                mock_settings.skip_otp_verification = True
+                mock_settings.full_auth_email_list = [FULL_AUTH_EMAIL]
+                mock_settings.frontend_url = "http://localhost:3000"
                 response = client.post(
                     "/api/auth/otp/verify",
-                    json={"email": TEST_BYPASS_EMAIL, "otp": "999999"},
+                    json={"email": DEV_TEST_EMAIL, "otp": "999999"},
                 )
         finally:
             app.dependency_overrides = {}
 
         assert response.status_code == 200
 
-    def test_non_bypass_email_still_validates_otp(self, client):
-        """Normal emails must still pass OTP validation."""
+    def test_full_auth_email_still_validates_otp(self, client):
+        """Emails in full_auth_emails must go through full OTP validation even in dev mode."""
         mock_db = _make_mock_db()
         _override_db(mock_db)
         try:
-            response = client.post(
-                "/api/auth/otp/verify",
-                json={"email": "normal@example.com", "otp": "000000"},
-            )
+            with patch("app.routers.auth.settings") as mock_settings:
+                mock_settings.skip_otp_verification = True
+                mock_settings.full_auth_email_list = [FULL_AUTH_EMAIL]
+                mock_settings.frontend_url = "http://localhost:3000"
+                response = client.post(
+                    "/api/auth/otp/verify",
+                    json={"email": FULL_AUTH_EMAIL, "otp": "000000"},
+                )
         finally:
             app.dependency_overrides = {}
         assert response.status_code == 400
@@ -240,10 +260,10 @@ class TestQueryBodyParsing:
 class TestFullAuthQueryFlow:
     @pytest.mark.asyncio
     async def test_login_then_query(self):
-        """Simulate: verify OTP (bypass) → get session cookie → query."""
+        """Simulate: verify OTP (dev bypass) → get session cookie → query."""
         mock_user = MagicMock()
         mock_user.id = uuid4()
-        mock_user.email = TEST_BYPASS_EMAIL
+        mock_user.email = DEV_TEST_EMAIL
         mock_user.role = "employee"
         mock_user.access_role = "employee"
 
@@ -266,21 +286,26 @@ class TestFullAuthQueryFlow:
 
         try:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-                # Step 1: send OTP
-                with patch("app.routers.auth.send_otp_email"):
-                    r = await client.post("/api/auth/otp/send", json={"email": TEST_BYPASS_EMAIL})
-                assert r.status_code == 200
+                with patch("app.routers.auth.settings") as mock_settings:
+                    mock_settings.skip_otp_email = True
+                    mock_settings.skip_otp_verification = True
+                    mock_settings.full_auth_email_list = [FULL_AUTH_EMAIL]
+                    mock_settings.frontend_url = "http://localhost:3000"
 
-                # Step 2: verify OTP (bypass — any code works)
-                with patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=mock_user):
-                    r = await client.post(
-                        "/api/auth/otp/verify",
-                        json={"email": TEST_BYPASS_EMAIL, "otp": "000000"},
-                    )
-                assert r.status_code == 200
-                assert r.json()["is_new_user"] is False
-                session_cookie = r.cookies.get("session")
-                assert session_cookie, "Session cookie must be set after login"
+                    # Step 1: send OTP (skipped in dev mode)
+                    r = await client.post("/api/auth/otp/send", json={"email": DEV_TEST_EMAIL})
+                    assert r.status_code == 200
+
+                    # Step 2: verify OTP (dev bypass — any code works)
+                    with patch("app.routers.auth._get_user_by_email", new_callable=AsyncMock, return_value=mock_user):
+                        r = await client.post(
+                            "/api/auth/otp/verify",
+                            json={"email": DEV_TEST_EMAIL, "otp": "000000"},
+                        )
+                    assert r.status_code == 200
+                    assert r.json()["is_new_user"] is False
+                    session_cookie = r.cookies.get("session")
+                    assert session_cookie, "Session cookie must be set after login"
 
                 # Step 3: query using the session cookie
                 # Override get_current_user so the query step doesn't need DB auth
