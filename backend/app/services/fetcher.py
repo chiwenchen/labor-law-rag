@@ -27,6 +27,13 @@ async def fetch_law(law_id: str, law_name: str) -> list[LawArticleData]:
         response.raise_for_status()
         data = response.json()
 
+    actual_name = data.get("法規名稱", "")
+    if actual_name and actual_name != law_name:
+        raise ValueError(
+            f"Law name mismatch for {law_id}: "
+            f"expected '{law_name}', got '{actual_name}'"
+        )
+
     version = data.get("最新異動日期", "unknown")
     articles = []
     for item in data.get("法規內容", []):

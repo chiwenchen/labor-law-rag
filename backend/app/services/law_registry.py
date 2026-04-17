@@ -10,17 +10,17 @@ class LawInfo:
 
 LAW_REGISTRY: list[LawInfo] = [
     LawInfo("N0020007", "勞資爭議處理法"),
+    LawInfo("N0020012", "大量解僱勞工保護法"),
     LawInfo("N0030001", "勞動基準法"),
-    LawInfo("N0030002", "勞工請假規則"),
-    LawInfo("N0030003", "大量解僱勞工保護法"),
+    LawInfo("N0030006", "勞工請假規則"),
     LawInfo("N0030014", "性別平等工作法"),
     LawInfo("N0030015", "性別平等工作法施行細則"),
+    LawInfo("N0030020", "勞工退休金條例"),
     LawInfo("N0050001", "勞工保險條例"),
-    LawInfo("N0060001", "勞工退休金條例"),
-    LawInfo("N0060002", "職業安全衛生法"),
-    LawInfo("N0060003", "勞工職業災害保險及保護法"),
-    LawInfo("N0090001", "就業保險法"),
-    LawInfo("N0090003", "就業服務法"),
+    LawInfo("N0050021", "就業保險法"),
+    LawInfo("N0050031", "勞工職業災害保險及保護法"),
+    LawInfo("N0060001", "職業安全衛生法"),
+    LawInfo("N0090001", "就業服務法"),
 ]
 
 VALID_LAW_IDS: frozenset[str] = frozenset(law.law_id for law in LAW_REGISTRY)
