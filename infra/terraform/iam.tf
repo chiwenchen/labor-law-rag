@@ -30,7 +30,10 @@ data "aws_iam_policy_document" "ec2_app" {
       "ssm:GetParameters",
       "ssm:GetParametersByPath",
     ]
+    # GetParametersByPath needs permission on the path itself (parameter/vera-hr)
+    # in addition to the children (parameter/vera-hr/*).
     resources = [
+      "arn:aws:ssm:${var.region}:${local.account_id}:parameter/vera-hr",
       "arn:aws:ssm:${var.region}:${local.account_id}:parameter/vera-hr/*",
     ]
   }
