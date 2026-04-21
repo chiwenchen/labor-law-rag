@@ -178,10 +178,10 @@ jobs:
           cmd_id="${{ steps.ssm.outputs.cmd_id }}"
           iid="${{ needs.terraform.outputs.instance_id }}"
 
-          # Poll until the invocation reaches a terminal state. `ssm wait` has a
-          # 600s ceiling which is too short for an initial deploy (bge-m3 pull
-          # + model load can take several minutes).
-          for _ in $(seq 1 60); do
+          # Poll until the invocation reaches a terminal state.
+          # First deploy pulls ~6GB of backend images (torch + sentence-transformers),
+          # which on EC2 t4g.medium can take 15-25 min. Cap at 40 min.
+          for _ in $(seq 1 240); do
             status=$(aws ssm get-command-invocation \
               --command-id "$cmd_id" --instance-id "$iid" \
               --query 'Status' --output text 2>/dev/null || echo "Pending")
