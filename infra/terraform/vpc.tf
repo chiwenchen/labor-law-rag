@@ -29,7 +29,7 @@ locals {
 
 resource "aws_security_group" "ec2" {
   name        = "${local.name_prefix}-ec2"
-  description = "Vera HR EC2 — HTTPS/HTTP from Cloudflare only (v4+v6), no SSH (use SSM)"
+  description = "Vera HR EC2 - HTTPS/HTTP from Cloudflare only (v4+v6), no SSH (use SSM)"
   vpc_id      = data.aws_vpc.default.id
 
   tags = {
