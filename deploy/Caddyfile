@@ -1,0 +1,31 @@
+# Caddy reverse proxy — automatic HTTPS via Let's Encrypt (HTTP-01 challenge).
+# Cloudflare proxy (orange cloud) should use "Full (strict)" SSL mode.
+#
+# $DOMAIN and $API_DOMAIN come from /opt/vera-hr/.env.
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Proxy /api/* directly to FastAPI (same-origin from frontend)
+	handle_path /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else → Next.js
+	reverse_proxy frontend:3000
+
+	log {
+		output stdout
+		format console
+	}
+}
+
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy backend:8000
+
+	log {
+		output stdout
+		format console
+	}
+}

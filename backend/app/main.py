@@ -92,6 +92,11 @@ async def add_security_headers(request: Request, call_next) -> Response:
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 app.include_router(query.router, prefix="/api")
 app.include_router(sessions.router, prefix="/api")
 app.include_router(articles.router, prefix="/api")
