@@ -179,7 +179,7 @@ export default function LoginPage() {
               ))}
             </div>
             <button
-              onClick={handleVerifyOtp}
+              onClick={() => handleVerifyOtp()}
               disabled={loading || otp.join("").length !== 6}
               className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg py-3 text-sm font-medium transition-colors"
             >
