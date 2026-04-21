@@ -112,6 +112,16 @@ resource "aws_iam_role" "github_deploy" {
   assume_role_policy = data.aws_iam_policy_document.github_assume.json
 }
 
+# The deploy role needs to both (a) manage the entire Terraform-controlled stack
+# (EC2/IAM/SSM/KMS/S3/VPC) and (b) send SSM commands for rollout. Enumerating
+# every required verb across these services is impractical; instead we rely on
+# the trust policy to lock assumption to `refs/heads/main` of this specific repo.
+# Branches, tags, and pull_request events cannot assume this role.
+resource "aws_iam_role_policy_attachment" "github_deploy_admin" {
+  role       = aws_iam_role.github_deploy.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
 data "aws_iam_policy_document" "github_deploy" {
   # Terraform backend — state + lock
   statement {
