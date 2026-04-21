@@ -1,0 +1,16 @@
+# Copy to terraform.tfvars (gitignored) and fill in real values.
+
+anthropic_api_key = "sk-ant-xxxxxxxxxxxxxxxx"
+resend_api_key    = "re_xxxxxxxxxxxxxxxx"
+
+# postgres_password: any printable ASCII except single quotes (') and newlines.
+# Generate with:  openssl rand -base64 32 | tr -d '\n'
+postgres_password = "change-me-to-a-long-random-string"
+
+# Optional overrides — defaults in variables.tf are fine for most cases.
+# region        = "ap-northeast-1"
+# instance_type = "t4g.medium"
+# domain        = "vera-hr.redarch.dev"
+# api_domain    = "api-vera-hr.redarch.dev"
+# github_repo   = "chiwenchen/labor-law-rag"
+# github_branch = "main"

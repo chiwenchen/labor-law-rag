@@ -1,0 +1,71 @@
+# Production Docker Compose — overlay for EC2.
+# Usage on EC2:
+#   cd /opt/vera-hr
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# env_file points to /opt/vera-hr/.env (rendered from SSM by user_data).
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: always
+    env_file: .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/chiwenchen/labor-law-rag-backend:latest
+    pull_policy: always
+    restart: always
+    env_file: .env
+    volumes:
+      - hf_cache:/app/.cache/huggingface
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health',timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 300s  # bge-m3 first-load on CPU takes 2–4 min
+
+  frontend:
+    image: ghcr.io/chiwenchen/labor-law-rag-frontend:latest
+    pull_policy: always
+    restart: always
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      BACKEND_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file: .env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  pgdata:
+  hf_cache:
+  caddy_data:
+  caddy_config:
