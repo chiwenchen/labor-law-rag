@@ -157,11 +157,15 @@ jobs:
       - name: Send deploy command via SSM
         id: ssm
         run: |
+          # user_data only syncs S3->/opt/vera-hr at boot time (when S3 was empty).
+          # On every deploy we sync first so deploy.sh itself is present, then exec it.
           cmd_id=$(aws ssm send-command \
             --instance-ids "${{ needs.terraform.outputs.instance_id }}" \
             --document-name "AWS-RunShellScript" \
             --comment "deploy ${{ github.sha }}" \
             --parameters "commands=[
+              'sudo -u ec2-user aws s3 sync s3://${{ needs.terraform.outputs.app_bucket }}/config/ /opt/vera-hr/ --region ${{ env.AWS_REGION }} --exclude .env',
+              'chmod +x /opt/vera-hr/*.sh',
               'sudo -u ec2-user S3_BUCKET=${{ needs.terraform.outputs.app_bucket }} AWS_REGION=${{ env.AWS_REGION }} bash /opt/vera-hr/deploy.sh'
             ]" \
             --cloud-watch-output-config "CloudWatchOutputEnabled=true" \
