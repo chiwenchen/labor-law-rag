@@ -6,8 +6,10 @@
 {$DOMAIN} {
 	encode zstd gzip
 
-	# Proxy /api/* directly to FastAPI (same-origin from frontend)
-	handle_path /api/* {
+	# Proxy /api/* directly to FastAPI (same-origin from frontend).
+	# Use `handle` (not `handle_path`) so the /api prefix is preserved —
+	# FastAPI routers are mounted at /api/auth, /api/query, etc.
+	handle /api/* {
 		reverse_proxy backend:8000
 	}
 
