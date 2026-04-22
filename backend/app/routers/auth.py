@@ -192,7 +192,7 @@ async def register(
         delete(PendingRegistration).where(PendingRegistration.token == request.pending_token)
     )
 
-    user = User(email=email, role=request.role, access_role="employee")
+    user = User(email=email, role=request.role, access_role="employee", credits=100)
     db.add(user)
     await db.flush()  # get user.id before commit
 
