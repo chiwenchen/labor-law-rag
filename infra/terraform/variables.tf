@@ -53,8 +53,9 @@ variable "resend_api_key" {
 }
 
 variable "email_from" {
-  type    = string
-  default = "noreply@vera-hr.redarch.dev"
+  type        = string
+  default     = "noreply@redarch.dev"
+  description = "Resend requires the exact domain verified. redarch.dev is verified; subdomains like vera-hr.redarch.dev need separate verification."
 }
 
 variable "postgres_user" {
